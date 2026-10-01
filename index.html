@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Ranks ChatGPT ad topics for Intersec by buyer, journey phase, region and language, with context hints, five ad variants per topic and return estimates.">
+<style>
+  html{color-scheme:dark}
+  :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  body{margin:0}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>ChatGPT Ad Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* Single committed dark identity taken from intersec.com: #2F2F2F ground, white type,
+   #F1762C as the only accent. Layout: constraint rail on the left, ranked queue on the right. */
+:root{
+  --bg:#2F2F2F; --surface:#383838; --surface-2:#434343;
+  --fg:#FFFFFF; --muted:rgba(255,255,255,.66); --faint:rgba(255,255,255,.42);
+  --line:rgba(255,255,255,.14); --line-strong:rgba(255,255,255,.28);
+  --accent:#F1762C; --accent-dim:rgba(241,118,44,.16); --accent-line:rgba(241,118,44,.45); --on-accent:#2F2F2F;
+  --display:"Jost","Helvetica Neue",Arial,sans-serif;
+  --body:"Jost",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:4px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;margin:0;font-weight:300}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:20px;padding-block:30px 70px}
+
+h1,h2,h3,h4{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,4.2vw,42px);font-weight:600;letter-spacing:-.02em;line-height:1.05}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+.lede{color:var(--muted);max-width:66ch;margin:14px 0 0;font-size:15.5px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:26px}
+
+.cols{display:grid;grid-template-columns:292px minmax(0,1fr);gap:30px;align-items:start}
+@media (max-width:920px){.cols{grid-template-columns:1fr;gap:22px}}
+
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:12px}
+@media (max-width:920px){.rail{position:static}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px}
+.panel h3{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:11px}
+.panel .sub{font-size:12px;color:var(--faint);margin:9px 0 0;line-height:1.45}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--body);font-size:12.5px;font-weight:400;padding:5px 10px;border-radius:99px;border:1px solid var(--line-strong);background:transparent;color:var(--muted);cursor:pointer;line-height:1.35}
+.chip:hover{border-color:var(--accent);color:var(--fg)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:500}
+.seg{display:grid;gap:5px}
+.segbtn{text-align:left;font-family:var(--body);font-size:13.5px;padding:9px 11px;border-radius:var(--r);border:1px solid var(--line-strong);background:transparent;color:var(--muted);cursor:pointer;line-height:1.3}
+.segbtn small{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+.segbtn:hover{border-color:var(--accent);color:var(--fg)}
+.segbtn[aria-pressed="true"]{background:var(--accent-dim);border-color:var(--accent);color:var(--fg)}
+.segbtn[aria-pressed="true"] small{color:var(--muted)}
+.rangerow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.rangeval{font-family:var(--mono);font-size:16px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.resetbtn{width:100%;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;background:transparent;border:1px dashed var(--line-strong);color:var(--faint);border-radius:var(--r);padding:9px;cursor:pointer}
+.resetbtn:hover{color:var(--fg);border-color:var(--accent)}
+
+.phasenote{border:1px solid var(--accent-line);background:var(--accent-dim);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;font-size:13.5px;line-height:1.55;color:var(--fg)}
+.phasenote b{color:var(--accent);font-weight:600}
+
+.resulthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.resulthead h2{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.count{font-family:var(--mono);font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:9px;overflow:hidden}
+.card.lead{border-color:var(--accent-line)}
+.cardhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px 15px;cursor:pointer;width:100%;text-align:left;background:transparent;border:0;font-family:inherit;color:inherit}
+.cardhead:hover{background:var(--surface-2)}
+.card.lead .cardhead{background:var(--accent-dim)}
+.card.lead .cardhead:hover{background:rgba(241,118,44,.24)}
+.rank{font-family:var(--mono);font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums;width:20px}
+.ttl{min-width:0}
+.ttl .name{font-family:var(--display);font-weight:500;font-size:16.5px;line-height:1.25;display:block}
+.ttl .meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:3px 7px;border-radius:2px;background:var(--surface-2);color:var(--muted)}
+.tag.lead{background:var(--accent);color:var(--on-accent);font-weight:500}
+.tag.risk{background:transparent;color:var(--accent);border:1px solid var(--accent-line)}
+.tag.organic{background:transparent;color:var(--faint);border:1px solid var(--line-strong)}
+.strength{display:flex;gap:3px;align-items:center}
+.strength i{display:block;width:16px;height:4px;border-radius:1px;background:var(--line-strong)}
+.strength i.on{background:var(--accent)}
+.chev{color:var(--faint);font-family:var(--mono);font-size:13px;width:12px;text-align:center}
+.scorebox{display:flex;align-items:center;gap:12px}
+
+.body{border-top:1px solid var(--line);padding:16px 15px;display:grid;gap:15px}
+.bk h4,.hintbox h4,.blockhead{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0 0 6px;font-weight:500}
+.bk p{margin:0;font-size:14px;line-height:1.55;color:var(--muted)}
+.bk ul{margin:0;padding-left:17px;font-size:13.5px;color:var(--muted)}
+.bk li{margin-bottom:4px}
+
+.qline{background:var(--surface-2);border-left:2px solid var(--accent);border-radius:0 var(--r) var(--r) 0;padding:11px 14px}
+.qline p{margin:0;font-size:15.5px;font-weight:400;color:var(--fg);line-height:1.45}
+.qline[dir="rtl"]{border-left:0;border-right:2px solid var(--accent);border-radius:var(--r) 0 0 var(--r);text-align:right}
+.ladder{display:grid;gap:5px;margin-top:9px}
+.lrow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;font-size:13px;color:var(--faint);align-items:start}
+.lrow span:first-child{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding-top:3px}
+.lrow.active{color:var(--fg)}
+.lrow.active span:first-child{color:var(--accent)}
+@media (max-width:560px){.lrow{grid-template-columns:1fr;gap:2px}}
+
+.hintbox{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;position:relative}
+.hintbox p{font-size:14px;line-height:1.6;margin:0;color:var(--fg);padding-right:66px}
+.hintbox p[dir="rtl"]{padding-right:0;padding-left:66px;text-align:right}
+.copy{position:absolute;top:11px;right:11px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;background:transparent;border:1px solid var(--line-strong);color:var(--muted);border-radius:2px;padding:4px 8px;cursor:pointer}
+.copy:hover{color:var(--accent);border-color:var(--accent)}
+
+.ads{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:9px}
+.ad{border:1px solid var(--line-strong);border-radius:var(--r);padding:12px 13px;background:var(--bg);display:flex;flex-direction:column;gap:5px;min-width:0}
+.ad .vnum{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.ad .brandline{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+.ad .h{font-family:var(--display);font-weight:500;font-size:15px;line-height:1.28;color:var(--fg)}
+.ad .d{font-size:13px;color:var(--muted);line-height:1.48}
+.ad .u{font-family:var(--mono);font-size:10px;color:var(--accent);word-break:break-all;margin-top:auto;padding-top:6px;border-top:1px solid var(--line)}
+.ad .dlabel{font-size:11px;color:var(--faint);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.build{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--accent-line);color:var(--accent);border-radius:2px;padding:2px 5px}
+.ad[dir="rtl"] .h,.ad[dir="rtl"] .d{text-align:right}
+
+.est{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.est div{background:var(--bg);padding:10px 12px}
+.est .n{font-family:var(--mono);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.15;color:var(--accent)}
+.est .l{font-size:11px;color:var(--faint);margin-top:3px;line-height:1.3}
+
+.evid{display:flex;flex-wrap:wrap;gap:6px}
+.evid span{font-size:12.5px;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:2px;padding:4px 9px}
+.geo{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.6}
+.note{font-size:13px;line-height:1.5;border-radius:var(--r);padding:11px 13px;border:1px solid var(--accent-line);background:var(--accent-dim);color:var(--fg)}
+.empty{background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--r);padding:30px;text-align:center;color:var(--muted);font-size:14px}
+
+footer{margin-top:44px;padding-top:22px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted);line-height:1.65}
+footer h3{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:500;margin:0 0 8px}
+footer p{margin:0 0 14px;max-width:80ch}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Intersec · Paid media planning</p>
+    <h1>ChatGPT Ad Planner</h1>
+    <p class="lede">ChatGPT ads have no keyword list. You describe the situation you want the ad to appear in, and the model matches it against the whole conversation. Every topic here produces a context hint, a question ladder across the buying journey, and five ad variants with their own angle and destination, in the language of the conversations you want to match.</p>
+  </header>
+
+  <div class="cols">
+    <aside class="rail">
+      <div class="panel">
+        <h3>Journey phase</h3>
+        <div class="seg" id="phases"></div>
+        <p class="sub">Changes the question we buy, the context hint and the ranking. Most vendor questions already favour us, so earlier phases rank differently.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Buyer</h3>
+        <div class="chips" id="auds"></div>
+        <p class="sub">Every question is written in the voice of this buyer, about a problem they actually have. A regulator and a network planner never ask the same thing.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Language</h3>
+        <div class="chips" id="langs"></div>
+        <p class="sub">ChatGPT ads target by language. Write the hint in the language of the conversation you want to match, not only the ad copy.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Region</h3>
+        <div class="chips" id="regions"></div>
+        <p class="sub">Country targeting is the only geographic lever in Ads Manager. This sets the country list in each brief and drops topics that do not travel.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Budget per campaign</h3>
+        <div class="rangerow"><span class="rangeval" id="budgetval"></span><span class="geo" id="dailyval"></span></div>
+        <input type="range" id="budget" min="450" max="6000" step="150" value="450" aria-label="Monthly budget per campaign in euros">
+        <p class="sub">Used only to estimate what each ad returns. Run as many as you like; the platform floor is 15 EUR a day per campaign.</p>
+      </div>
+
+      <button class="resetbtn" id="reset" type="button">Reset</button>
+    </aside>
+
+    <main>
+      <div class="phasenote" id="phasenote"></div>
+
+      <div class="resulthead">
+        <h2>Ranked topics</h2>
+        <span class="count" id="count"></span>
+      </div>
+      <div id="results"></div>
+
+      <footer>
+        <h3>The five variants</h3>
+        <p>Each topic carries five ads with structurally different angles rather than tonal rewrites: the pain the buyer stated, a proof point, a contrast against the approach they already use, a technical capability, and a reference or case. Each points at its own destination so you can see which creative pulls which page. Destinations marked "to create" do not exist yet and are the landing pages worth building first.</p>
+
+        <h3>How to read the ranking</h3>
+        <p>The order comes from four judgements: how well the topic fits what we actually sell, how strongly that conversation happens at the selected journey phase, how crowded it is with competitor messaging, and whether we already have a page to send the click to. There is no impression volume behind it, because ChatGPT ads report no search terms. Treat the order as an argument, not a measurement.</p>
+
+        <h3>How the estimates are built</h3>
+        <p>Cost per click is derived from how contested the topic is, from about 2 EUR on uncontested regulatory questions to about 3.20 EUR on crowded commercial ones. Conversion rate is set by journey phase, since an awareness click converts far worse than a vendor-shortlist click, and is adjusted by whether we have a landing page built for the topic. These are planning assumptions to be replaced with real numbers after the first month.</p>
+
+        <h3>Why the decision phase ranks lower than it looks</h3>
+        <p>A question like which vendor deploys a national cell broadcast system fastest already describes us closely enough that we tend to surface without paying. Topics where that is true are marked, and the ranking pushes them down at the decision phase. The budget is better spent where the buyer has not yet worked out that a public warning system is the answer to their problem.</p>
+
+        <h3>Evidence and localisation</h3>
+        <p>Proof points come from our published material: 50+ emergency system deployments, 500 million people protected, the Kuwait system live in 10 days, flood warning for 5.7 million at-risk properties in England, 40+ location techniques, CAMARA location, authentication and fraud prevention APIs, and Gartner recognition as a location intelligence player. Questions, hints and ad copy are localised. Planning notes stay in English.</p>
+
+        <h3>Excluded and restricted</h3>
+        <p>Financial services, health, gambling and cryptocurrency are excluded categories on the platform. Law enforcement creative sits close enough to the line that rejection is likely, so that topic carries a flag rather than a recommendation.</p>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var DAYS = 30.4;
+
+var PHASES = [
+  {id:"a", name:"Awareness",     sub:"They have an operational problem, not a solution in mind"},
+  {id:"c", name:"Consideration", sub:"They are comparing approaches, no vendor named"},
+  {id:"d", name:"Decision",      sub:"They are asking which vendors to shortlist"}
+];
+
+var AUDS = {
+  gov:"Governments & civil protection",
+  reg:"Telecom regulators",
+  mno:"Mobile operators",
+  lea:"Law enforcement"
+};
+
+var LANGS = {en:"English", fr:"Français", es:"Español", ar:"العربية"};
+var RTL = {ar:true};
+
+var REGIONS = {
+  eu:{name:"Europe", countries:["France","Germany","United Kingdom","Spain","Italy","Netherlands","Belgium","Austria","Poland","Portugal","Greece","Croatia","Romania","Ireland"]},
+  me:{name:"Middle East", countries:["Saudi Arabia","United Arab Emirates","Kuwait","Qatar","Oman","Bahrain","Jordan"]},
+  apac:{name:"APAC", countries:["Japan","South Korea","Singapore","Malaysia","Indonesia","Philippines","Thailand","Australia","New Zealand","India"]},
+  latam:{name:"LATAM", countries:["Brazil","Mexico","Chile","Colombia","Peru","Argentina"]},
+  afr:{name:"Africa", countries:["Morocco","Egypt","South Africa","Kenya","Nigeria","Ghana","Côte d'Ivoire","Senegal","Tanzania"]},
+  nam:{name:"North America", countries:["United States","Canada"]}
+};
+
+var FRAME = {
+  en:{
+    a:"Conversations where the person is describing an operational problem and does not yet know what kind of system answers it.",
+    c:"Conversations where the person is comparing approaches and technologies, before any vendor is named.",
+    d:"Conversations where the person is asking which vendors to shortlist."
+  },
+  fr:{
+    a:"Conversations où la personne décrit un problème opérationnel et ignore encore quel type de système y répond.",
+    c:"Conversations où la personne compare des approches et des technologies, avant toute citation de fournisseur.",
+    d:"Conversations où la personne demande quels fournisseurs retenir."
+  },
+  es:{
+    a:"Conversaciones en las que la persona describe un problema operativo y todavía no sabe qué tipo de sistema lo resuelve.",
+    c:"Conversaciones en las que la persona compara enfoques y tecnologías, antes de nombrar a ningún proveedor.",
+    d:"Conversaciones en las que la persona pregunta qué proveedores debería preseleccionar."
+  },
+  ar:{
+    a:"محادثات يصف فيها الشخص مشكلة تشغيلية ولا يعرف بعد نوع النظام الذي يعالجها.",
+    c:"محادثات يقارن فيها الشخص بين المقاربات والتقنيات قبل ذكر أي مورّد.",
+    d:"محادثات يسأل فيها الشخص عن المورّدين الذين ينبغي إدراجهم في القائمة المختصرة."
+  }
+};
+
+var PHASE_NOTE = {
+  a:"<b>Awareness.</b> The buyer is describing something that went wrong or a mandate they have been handed, in their own operational language, with no solution category in mind. Nobody bids here because it does not look commercial. This is where a small budget buys the most ground, and the hint has to describe their situation rather than our product.",
+  c:"<b>Consideration.</b> The buyer is weighing approaches and has not named a vendor. Our strongest position, because the honest comparisons tend to favour running cell broadcast and location-based SMS together, and we run both.",
+  d:"<b>Decision.</b> Questions at this phase often describe our exact combination, which means we frequently surface without paying. Topics where that is true are marked below and pushed down the ranking. Fund these only where a competitor owns the answer today."
+};
+
+var ANGLES = ["Stated pain","Proof point","Contrast","Capability","Reference"];
+
+/* ------------------------------------------------------------------ */
+var T = [
+
+/* ===================== GOVERNMENTS & CIVIL PROTECTION ===================== */
+{
+ id:"g-pws", aud:"gov",
+ fit:.97, comp:.35, asset:1, organic:.85, ph:{a:.55,c:.85,d:1},
+ m:{eu:.9,me:1,apac:.9,latam:.8,afr:.85,nam:.35},
+ dest:[
+  {u:"https://insights.intersec.com/cell-broadcast-emergency-alerting-live-in-10-days", l:"Deployment story"},
+  {u:"https://intersec.com/offerings/public-warning-system", l:"Solution page"},
+  {u:"https://intersec.com/success-story-si-alert-slovenia", l:"National case study"},
+  {u:"https://insights.intersec.com/public-warning-procurement-guide", l:"Procurement guide", b:1},
+  {u:"https://intersec.com/clients", l:"Reference list"}
+ ],
+ evidence:["50+ emergency system deployments","500 million people protected","Kuwait live in 10 days","France, Germany, UK, Austria, Luxembourg, Croatia, Slovenia, Cyprus"],
+ why:"The only topic where a live asset, a concrete claim and an active buyer line up. The 10 day deployment answers the question that stalls procurement, which is how long this takes. At the decision phase we already surface for the vendor question, so the money is better spent one phase earlier, while the agency is still describing the delay rather than shopping for a system.",
+ setup:["Country targeting across the selected region","Weight mobile, ministry staff research on phones","No custom audience, our buyer pool is far below the 25,000 match minimum"],
+ L:{
+  en:{n:"Deploying a national public warning system",
+      s:"The subject is a civil protection or interior ministry team that cannot warn the population fast enough: the delay between a hazard being confirmed and a message reaching people, who owns the decision to alert, what the mobile operators have to provide, how long a national system takes to stand up, and what it costs to run.",
+      q:{a:"How do civil protection agencies shorten the gap between confirming a hazard and the public actually being warned?",
+         c:"What does it actually take to deploy a national alerting system, and how long does it take?",
+         d:"Which vendors can deploy a national cell broadcast public warning system the fastest?"},
+      v:[
+       {h:"A national alerting system, live in 10 days", d:"We deployed a full cell broadcast public warning system for a national authority in 10 days."},
+       {h:"50 national systems, 500 million people", d:"The scale already running on our alerting, and what each authority asked for first."},
+       {h:"Years of procurement, 10 days of deployment", d:"The deployment is not what delays a public warning programme. Here is what does."},
+       {h:"From decision to first alert", d:"Cell broadcast, location-based SMS, satellite and media in one system, run from one console."},
+       {h:"How Slovenia built SI-Alert", d:"A national public warning system from obligation to live operation. The full account."}
+      ]},
+  fr:{n:"Déployer un système d'alerte à la population",
+      s:"Le sujet est une équipe de protection civile ou de ministère de l'intérieur incapable d'alerter assez vite : le délai entre la confirmation de l'aléa et la réception du message, qui décide de l'alerte, ce que doivent fournir les opérateurs mobiles, le temps nécessaire pour monter un système national et son coût d'exploitation.",
+      q:{a:"Comment les services de protection civile réduisent-ils le délai entre la confirmation d'un aléa et l'alerte effective de la population ?",
+         c:"Que faut-il réellement pour déployer un système d'alerte national, et en combien de temps ?",
+         d:"Quels fournisseurs déploient le plus rapidement un système d'alerte à la population en diffusion cellulaire ?"},
+      v:[
+       {h:"Un système d'alerte national en 10 jours", d:"Nous avons déployé un système d'alerte à la population en diffusion cellulaire pour une autorité nationale en 10 jours."},
+       {h:"50 systèmes nationaux, 500 millions de personnes", d:"L'échelle déjà couverte par nos systèmes d'alerte, et ce que chaque autorité a demandé en premier."},
+       {h:"Des années de procédure, 10 jours de déploiement", d:"Ce n'est pas le déploiement qui retarde un programme d'alerte. Voici ce qui le retarde."},
+       {h:"De la décision à la première alerte", d:"Diffusion cellulaire, SMS géolocalisé, satellite et médias dans un seul système, pilotés d'une seule console."},
+       {h:"Comment la Slovénie a bâti SI-Alert", d:"Un système d'alerte à la population, de l'obligation réglementaire à l'exploitation. Le récit complet."}
+      ]},
+  es:{n:"Desplegar un sistema nacional de alerta a la población",
+      s:"El tema es un equipo de protección civil o de un ministerio del interior que no consigue alertar con suficiente rapidez: el retraso entre confirmar la amenaza y que el mensaje llegue, quién decide alertar, qué deben aportar los operadores móviles, cuánto tarda en montarse un sistema nacional y cuánto cuesta operarlo.",
+      q:{a:"¿Cómo reducen los servicios de protección civil el tiempo entre confirmar una amenaza y avisar realmente a la población?",
+         c:"¿Qué hace falta realmente para desplegar un sistema nacional de alerta, y cuánto tarda?",
+         d:"¿Qué proveedores despliegan más rápido un sistema nacional de alerta con Cell Broadcast?"},
+      v:[
+       {h:"Un sistema nacional de alerta en 10 días", d:"Desplegamos un sistema completo de alerta con Cell Broadcast para una autoridad nacional en 10 días."},
+       {h:"50 sistemas nacionales, 500 millones de personas", d:"La escala que ya opera sobre nuestra alerta, y qué pidió primero cada autoridad."},
+       {h:"Años de licitación, 10 días de despliegue", d:"No es el despliegue lo que retrasa un programa de alerta. Esto es lo que lo retrasa."},
+       {h:"De la decisión a la primera alerta", d:"Cell Broadcast, SMS geolocalizado, satélite y medios en un solo sistema, desde una única consola."},
+       {h:"Cómo Eslovenia construyó SI-Alert", d:"Un sistema nacional de alerta, de la obligación a la operación real. El relato completo."}
+      ]},
+  ar:{n:"نشر نظام وطني للإنذار العام",
+      s:"الموضوع فريق في الحماية المدنية أو وزارة الداخلية لا يستطيع إنذار السكان بالسرعة الكافية: الفارق الزمني بين تأكيد الخطر ووصول الرسالة، ومن يملك قرار الإنذار، وما الذي يجب أن يوفره مشغلو الشبكات، وكم يستغرق بناء نظام وطني، وما تكلفة تشغيله.",
+      q:{a:"كيف تقلّص أجهزة الحماية المدنية الفارق الزمني بين تأكيد الخطر وإنذار السكان فعلياً؟",
+         c:"ما الذي يتطلبه فعلياً نشر نظام إنذار وطني، وكم يستغرق ذلك؟",
+         d:"أي المورّدين قادر على نشر نظام إنذار وطني بالبث الخلوي بأسرع وقت؟"},
+      v:[
+       {h:"نظام إنذار وطني خلال 10 أيام", d:"نشرنا نظام إنذار عام كاملاً بالبث الخلوي لجهة وطنية خلال 10 أيام."},
+       {h:"50 نظاماً وطنياً و500 مليون إنسان", d:"حجم التغطية القائم على أنظمتنا، وما طلبته كل جهة أولاً."},
+       {h:"سنوات من المناقصات وعشرة أيام للنشر", d:"ليس النشر ما يؤخّر برنامج الإنذار. هذا ما يؤخّره فعلاً."},
+       {h:"من القرار إلى أول إنذار", d:"بث خلوي ورسائل محددة بالموقع وأقمار صناعية وإعلام في نظام واحد ومن وحدة تحكم واحدة."},
+       {h:"كيف بنت سلوفينيا نظام SI-Alert", d:"نظام إنذار وطني من الالتزام التنظيمي إلى التشغيل الفعلي. الحكاية كاملة."}
+      ]}
+ }},
+
+{
+ id:"g-ew4all", aud:"gov",
+ fit:.85, comp:.22, asset:.4, organic:.45, ph:{a:.92,c:.7,d:.45},
+ m:{eu:.3,me:.7,apac:.9,latam:.9,afr:1,nam:.15},
+ dest:[
+  {u:"https://intersec.com/offerings/early-warning-system-in-disaster-management", l:"Early warning page"},
+  {u:"https://intersec.com/blog/early-warning-systems-for-disaster-resilience", l:"Analysis"},
+  {u:"https://intersec.com/offerings/civil-protection", l:"Civil protection page"},
+  {u:"https://insights.intersec.com/last-mile-early-warning", l:"Programme brief", b:1},
+  {u:"https://intersec.com/offerings/public-warning-system", l:"Solution page"}
+ ],
+ evidence:["500 million people protected","Multi-hazard alerting across cell broadcast, SMS, satellite and media","Galileo Emergency Warning Service for remote areas"],
+ why:"Roughly a third of countries still report no multi-hazard early warning coverage and the 2027 target is pulling donor money forward. Nobody bids this framing because it reads as policy rather than procurement. The weakness is that we have no page written for a donor or programme reader, so commission one before funding it hard.",
+ setup:["Country targeting across Africa, South and Southeast Asia, the Caribbean and the Pacific","Weight desktop, programme work happens on laptops","Judge on assisted conversions, the cycle is long"],
+ L:{
+  en:{n:"Closing the last mile in early warning",
+      s:"The subject is a national disaster management authority whose forecasting works but whose warnings do not arrive: which layer of the warning chain is missing, how hazard models connect to a channel that reaches people without an internet connection or a registration, how such a programme is funded, and what has to exist before a warning can be issued at national scale.",
+      q:{a:"Our hazard forecasting works but warnings still do not reach rural communities. Which part of the chain is missing?",
+         c:"What are the layers of a multi-hazard early warning system, and which one is usually missing?",
+         d:"Which vendors are recommended for national multi-hazard early warning deployments?"},
+      v:[
+       {h:"Forecasting is not warning", d:"The gap is almost never the model. It is the layer that carries the warning to people."},
+       {h:"500 million people under warning", d:"The dissemination layer we operate, and the national programmes already running on it."},
+       {h:"No internet, no app, no problem", d:"Cell broadcast needs neither a data connection nor an install to reach a rural population."},
+       {h:"Four channels, one warning", d:"Cell broadcast, SMS, satellite and broadcast media, so one failure does not stop the alert."},
+       {h:"Specifying the last mile", d:"A short brief on what a national early warning programme has to procure, and in what order."}
+      ]},
+  fr:{n:"Combler le dernier kilomètre de l'alerte précoce",
+      s:"Le sujet est une autorité nationale de gestion des catastrophes dont la prévision fonctionne mais dont les alertes n'arrivent pas : quel maillon de la chaîne manque, comment relier les modèles d'aléas à un canal qui atteint les gens sans connexion internet ni inscription, comment financer un tel programme et quels prérequis pour diffuser à l'échelle nationale.",
+      q:{a:"Nos prévisions fonctionnent, mais les alertes n'atteignent toujours pas les zones rurales. Quel maillon manque ?",
+         c:"De quelles couches se compose un système d'alerte précoce multirisque, et laquelle manque le plus souvent ?",
+         d:"Quels fournisseurs sont recommandés pour un déploiement national d'alerte précoce multirisque ?"},
+      v:[
+       {h:"Prévoir n'est pas alerter", d:"Le maillon manquant n'est presque jamais le modèle. C'est la couche qui porte l'alerte aux habitants."},
+       {h:"500 millions de personnes couvertes", d:"La couche de diffusion que nous exploitons, et les programmes nationaux qui s'y appuient déjà."},
+       {h:"Ni internet, ni application, ni problème", d:"La diffusion cellulaire n'exige ni connexion data ni installation pour atteindre une population rurale."},
+       {h:"Quatre canaux, une seule alerte", d:"Diffusion cellulaire, SMS, satellite et médias, pour qu'une défaillance n'arrête pas l'alerte."},
+       {h:"Spécifier le dernier kilomètre", d:"Une note courte sur ce qu'un programme national d'alerte précoce doit acquérir, et dans quel ordre."}
+      ]},
+  es:{n:"Cerrar el último kilómetro de la alerta temprana",
+      s:"El tema es una autoridad nacional de gestión de desastres cuya previsión funciona pero cuyos avisos no llegan: qué capa de la cadena falta, cómo conectar los modelos de amenaza con un canal que alcance a la gente sin conexión a internet ni registro previo, cómo se financia un programa así y qué debe existir antes de poder alertar a escala nacional.",
+      q:{a:"Nuestra previsión funciona, pero los avisos siguen sin llegar a las zonas rurales. ¿Qué eslabón falta?",
+         c:"¿De qué capas se compone un sistema de alerta temprana multiamenaza y cuál suele faltar?",
+         d:"¿Qué proveedores se recomiendan para despliegues nacionales de alerta temprana multiamenaza?"},
+      v:[
+       {h:"Prever no es alertar", d:"El eslabón que falta casi nunca es el modelo. Es la capa que lleva el aviso a la gente."},
+       {h:"500 millones de personas cubiertas", d:"La capa de difusión que operamos y los programas nacionales que ya se apoyan en ella."},
+       {h:"Sin internet, sin aplicación, sin problema", d:"Cell Broadcast no necesita conexión de datos ni instalación para llegar a una población rural."},
+       {h:"Cuatro canales, un solo aviso", d:"Cell Broadcast, SMS, satélite y medios, para que un fallo no detenga la alerta."},
+       {h:"Especificar el último kilómetro", d:"Una nota breve sobre qué debe adquirir un programa nacional de alerta temprana, y en qué orden."}
+      ]},
+  ar:{n:"سد الميل الأخير في الإنذار المبكر",
+      s:"الموضوع هيئة وطنية لإدارة الكوارث يعمل تنبؤها لكن إنذاراتها لا تصل: أي حلقة ناقصة في سلسلة الإنذار، وكيف تُربط نماذج المخاطر بقناة تصل إلى الناس دون إنترنت أو تسجيل مسبق، وكيف يُموَّل البرنامج، وما الذي يجب توافره قبل الإنذار على المستوى الوطني.",
+      q:{a:"تنبؤاتنا بالمخاطر تعمل، لكن الإنذارات لا تصل إلى المناطق الريفية. أي حلقة ناقصة في السلسلة؟",
+         c:"ما طبقات نظام الإنذار المبكر متعدد المخاطر، وأيها يكون ناقصاً عادةً؟",
+         d:"أي المورّدين يُنصح بهم لنشر أنظمة إنذار مبكر وطنية متعددة المخاطر؟"},
+      v:[
+       {h:"التنبؤ ليس إنذاراً", d:"الحلقة الناقصة نادراً ما تكون النموذج، بل الطبقة التي تحمل الإنذار إلى الناس."},
+       {h:"500 مليون إنسان تحت التغطية", d:"طبقة النشر التي نشغّلها، والبرامج الوطنية التي تعتمد عليها بالفعل."},
+       {h:"بلا إنترنت وبلا تطبيق وبلا مشكلة", d:"لا يحتاج البث الخلوي إلى اتصال بيانات ولا تثبيت للوصول إلى سكان الريف."},
+       {h:"أربع قنوات وإنذار واحد", d:"بث خلوي ورسائل وأقمار صناعية وإعلام، كي لا يوقف عطل واحد الإنذار."},
+       {h:"تحديد مواصفات الميل الأخير", d:"مذكّرة موجزة عمّا يجب أن يشتريه برنامج إنذار مبكر وطني، وبأي ترتيب."}
+      ]}
+ }},
+
+{
+ id:"g-tourist", aud:"gov",
+ fit:.93, comp:.2, asset:.5, organic:.35, ph:{a:.85,c:.92,d:.6},
+ m:{eu:1,me:.9,apac:.9,latam:.8,afr:.6,nam:.5},
+ dest:[
+  {u:"https://intersec.com/offerings/public-warning-system", l:"Solution page"},
+  {u:"https://insights.intersec.com/alerting-visitors-and-roamers", l:"Visitor alerting brief", b:1},
+  {u:"https://intersec.com/offerings/civil-protection", l:"Civil protection page"},
+  {u:"https://insights.intersec.com/cell-broadcast-emergency-alerting-live-in-10-days", l:"Deployment story"},
+  {u:"https://intersec.com/clients", l:"Reference list"}
+ ],
+ evidence:["Cell broadcast reaches every handset on the cell, no registration","Location-based SMS reaches roamers and last-known locations","Real-time population density heatmaps"],
+ why:"The strongest uncontested angle we have. App and registration based vendors cannot answer it, and it surfaces every season in any country with tourism. It also leads naturally into the cell broadcast case without us having to argue for the technology first.",
+ setup:["Country targeting on tourism-heavy markets","Flight it ahead of peak season rather than year round","Pairs well with the public warning system topic as a second hint"],
+ L:{
+  en:{n:"Alerting visitors, tourists and roamers",
+      s:"The subject is an authority whose risk zones fill with people it has no record of: seasonal visitors, day trippers, roamers on foreign SIMs, nobody on the municipal register and nobody with the national app installed, and what reaches them when an alert goes out.",
+      q:{a:"In peak season most people in our risk zones are not residents. How do agencies warn a population they have no record of?",
+         c:"How do you alert people who never registered for emergency notifications, including foreign visitors?",
+         d:"Which public warning solutions reach tourists and roamers, not just residents?"},
+      v:[
+       {h:"The people at risk did not register", d:"Cell broadcast reaches every handset on the cell, including foreign SIMs. No app, no list."},
+       {h:"Alerting a population you cannot count", d:"How coastal and mountain authorities warn seasonal visitors who appear on no register."},
+       {h:"Your app will not save a tourist", d:"Visitors do not install the national alert app. Cell broadcast never asks them to."},
+       {h:"Who is in the zone right now", d:"Real-time population heatmaps, so you know how many people the warning has to reach."},
+       {h:"Every handset on the cell", d:"Delivered in seconds to residents, visitors and roamers alike. No subscriber list involved."}
+      ]},
+  fr:{n:"Alerter visiteurs, touristes et clients en itinérance",
+      s:"Le sujet est une autorité dont les zones à risque se remplissent de personnes qu'elle ne recense pas : visiteurs saisonniers, excursionnistes, clients en itinérance sur SIM étrangère, absents du registre communal et sans l'application nationale, et ce qui les atteint au moment de la diffusion.",
+      q:{a:"En haute saison, la plupart des personnes présentes dans nos zones à risque ne sont pas résidentes. Comment alerter une population que l'on ne recense pas ?",
+         c:"Comment alerter des personnes qui ne se sont jamais inscrites, y compris les visiteurs étrangers ?",
+         d:"Quelles solutions d'alerte atteignent les touristes et les clients en itinérance, et pas seulement les résidents ?"},
+      v:[
+       {h:"Les personnes exposées ne se sont pas inscrites", d:"La diffusion cellulaire atteint tous les terminaux de la cellule, SIM étrangères comprises."},
+       {h:"Alerter une population que l'on ne recense pas", d:"Comment les autorités littorales et de montagne préviennent des visiteurs absents de tout registre."},
+       {h:"Votre application ne sauvera pas un touriste", d:"Les visiteurs n'installent pas l'application nationale. La diffusion cellulaire ne le leur demande pas."},
+       {h:"Qui se trouve dans la zone, maintenant", d:"Cartes de densité en temps réel, pour savoir combien de personnes l'alerte doit atteindre."},
+       {h:"Tous les terminaux de la cellule", d:"Diffusion en quelques secondes aux résidents, visiteurs et clients en itinérance. Sans liste d'abonnés."}
+      ]},
+  es:{n:"Alertar a visitantes, turistas y usuarios en itinerancia",
+      s:"El tema es una autoridad cuyas zonas de riesgo se llenan de personas que no tiene censadas: visitantes de temporada, excursionistas, usuarios en itinerancia con SIM extranjera, nadie en el padrón municipal y nadie con la aplicación nacional instalada, y qué les llega cuando se emite una alerta.",
+      q:{a:"En temporada alta, la mayoría de quienes están en nuestras zonas de riesgo no son residentes. ¿Cómo se alerta a una población que no está censada?",
+         c:"¿Cómo se alerta a quienes nunca se registraron, incluidos los visitantes extranjeros?",
+         d:"¿Qué soluciones de alerta llegan a turistas y usuarios en itinerancia, no solo a los residentes?"},
+      v:[
+       {h:"Los expuestos no se registraron", d:"Cell Broadcast llega a todos los terminales de la celda, incluidas las SIM extranjeras."},
+       {h:"Alertar a una población sin censar", d:"Cómo avisan las autoridades costeras y de montaña a visitantes que no figuran en ningún padrón."},
+       {h:"Su aplicación no salvará a un turista", d:"Los visitantes no instalan la aplicación nacional. Cell Broadcast no se lo pide."},
+       {h:"Quién está en la zona ahora mismo", d:"Mapas de densidad en tiempo real, para saber a cuántas personas debe llegar el aviso."},
+       {h:"Todos los terminales de la celda", d:"En segundos, a residentes, visitantes y usuarios en itinerancia. Sin lista de abonados."}
+      ]},
+  ar:{n:"إنذار الزوار والسياح والمتجولين",
+      s:"الموضوع جهة تمتلئ مناطق الخطر لديها بأشخاص لا سجل لها عنهم: زوار موسميون ورحلات يوم واحد ومتجولون بشرائح أجنبية، لا وجود لهم في السجل البلدي ولا التطبيق الوطني على أجهزتهم، وما الذي يصل إليهم عند إصدار الإنذار.",
+      q:{a:"في ذروة الموسم، معظم من في مناطق الخطر لدينا ليسوا مقيمين. كيف نُنذر سكاناً لا سجل لدينا عنهم؟",
+         c:"كيف يمكن إنذار من لم يسجّلوا مسبقاً، بمن فيهم الزوار الأجانب؟",
+         d:"أي حلول الإنذار العام تصل إلى السياح والمتجولين وليس المقيمين فقط؟"},
+      v:[
+       {h:"المعرّضون للخطر لم يسجّلوا", d:"يصل البث الخلوي إلى كل جهاز داخل الخلية، بما في ذلك الشرائح الأجنبية."},
+       {h:"إنذار سكان بلا سجل", d:"كيف تنذر الجهات الساحلية والجبلية زواراً موسميين لا يظهرون في أي سجل."},
+       {h:"تطبيقك لن ينقذ سائحاً", d:"الزوار لا يثبّتون التطبيق الوطني. والبث الخلوي لا يطلب منهم ذلك."},
+       {h:"من يوجد في المنطقة الآن", d:"خرائط كثافة سكانية لحظية، لتعرف كم شخصاً يجب أن يصل إليه الإنذار."},
+       {h:"كل جهاز داخل الخلية", d:"يصل خلال ثوانٍ إلى المقيمين والزوار والمتجولين معاً. بلا قائمة مشتركين."}
+      ]}
+ }},
+
+{
+ id:"g-hazard", aud:"gov",
+ fit:.84, comp:.42, asset:.6, organic:.4, ph:{a:.9,c:.72,d:.5},
+ m:{eu:1,me:.5,apac:.85,latam:.75,afr:.6,nam:.6},
+ dest:[
+  {u:"https://intersec.com/offerings/civil-protection", l:"Civil protection page"},
+  {u:"https://insights.intersec.com/flood-warning-modernisation", l:"Flood warning case", b:1},
+  {u:"https://intersec.com/offerings/public-warning-system", l:"Solution page"},
+  {u:"https://intersec.com/blog/early-warning-systems-for-disaster-resilience", l:"Analysis"},
+  {u:"https://intersec.com/offerings/early-warning-system-in-disaster-management", l:"Early warning page"}
+ ],
+ evidence:["Flood warning modernised for 5.7 million at-risk properties in England","Real-time population density heatmaps","AI-assisted alert creation, translation and channel selection"],
+ why:"The England flood deployment is our most concrete civil protection reference outside public warning procurement, and the registration gap is a pain the reader already feels. Demand is seasonal, so pause it outside hazard season rather than letting it run through a quiet quarter.",
+ setup:["Country targeting, concentrate on markets entering hazard season","All platforms","Pause outside season rather than lowering the bid"],
+ L:{
+  en:{n:"Modernising flood and wildfire warning",
+      s:"The subject is a hazard warning service that reaches only the people who opted in: moving from a registration list to warning everyone in the exposed area, connecting the forecasting model to the dissemination channel, and knowing how many people are actually inside the zone at the moment the warning goes out.",
+      q:{a:"Our flood warning service only reaches people who signed up for it. How are other agencies covering everyone at risk?",
+         c:"How do you move a flood or wildfire warning service from a registration list to area-based alerting?",
+         d:"Best early warning system providers for flood and wildfire alerting?"},
+      v:[
+       {h:"Warn everyone in the flood zone", d:"Not only the people who registered. Area-based alerting covers the rest of them."},
+       {h:"5.7 million properties at risk", d:"How England modernised flood warning to reach the whole exposed area, not a mailing list."},
+       {h:"Your register is the bottleneck", d:"Opt-in lists reach a fraction of those at risk. The zone does not care who signed up."},
+       {h:"From forecast to doorstep", d:"Connect the hazard model straight to the channel that reaches the exposed area in seconds."},
+       {h:"Wildfire outruns a mailing list", d:"Area alerting needs no database lookup and no consent check before it sends."}
+      ]},
+  fr:{n:"Moderniser l'alerte inondation et feux de forêt",
+      s:"Le sujet est un service d'alerte qui ne touche que les volontaires inscrits : passer d'une liste d'inscription à l'alerte de toute la zone exposée, relier le modèle de prévision au canal de diffusion et savoir combien de personnes se trouvent réellement dans la zone au moment de la diffusion.",
+      q:{a:"Notre service d'alerte inondation ne touche que les inscrits. Comment les autres services couvrent-ils l'ensemble des personnes exposées ?",
+         c:"Comment passer d'une liste d'inscrits à une alerte fondée sur la zone exposée ?",
+         d:"Quels sont les meilleurs fournisseurs d'alerte précoce pour les inondations et les feux de forêt ?"},
+      v:[
+       {h:"Alerter toute la zone inondable", d:"Pas seulement les inscrits. L'alerte par zone couvre tous les autres."},
+       {h:"5,7 millions de logements exposés", d:"Comment l'Angleterre a modernisé son alerte inondation pour couvrir toute la zone exposée."},
+       {h:"Votre registre est le goulot d'étranglement", d:"Les listes d'inscrits ne touchent qu'une fraction des personnes exposées. La zone, elle, n'inscrit personne."},
+       {h:"De la prévision au pas de porte", d:"Relier le modèle d'aléa directement au canal qui atteint la zone exposée en quelques secondes."},
+       {h:"Le feu va plus vite qu'une liste de diffusion", d:"L'alerte par zone n'attend ni requête en base ni vérification de consentement."}
+      ]},
+  es:{n:"Modernizar la alerta de inundaciones e incendios",
+      s:"El tema es un servicio de alerta que solo llega a quienes se inscribieron: pasar de una lista de registro a alertar a toda la zona expuesta, conectar el modelo de previsión con el canal de difusión y saber cuántas personas hay realmente dentro de la zona en el momento del aviso.",
+      q:{a:"Nuestro servicio de alerta de inundaciones solo llega a los inscritos. ¿Cómo cubren otras agencias a todos los expuestos?",
+         c:"¿Cómo se pasa de una lista de inscritos a una alerta basada en la zona expuesta?",
+         d:"¿Mejores proveedores de alerta temprana para inundaciones e incendios forestales?"},
+      v:[
+       {h:"Alertar a toda la zona inundable", d:"No solo a los inscritos. La alerta por zona cubre a todos los demás."},
+       {h:"5,7 millones de inmuebles en riesgo", d:"Cómo Inglaterra modernizó su alerta de inundaciones para cubrir toda la zona expuesta."},
+       {h:"Su padrón es el cuello de botella", d:"Las listas de inscritos llegan a una fracción de los expuestos. La zona no inscribe a nadie."},
+       {h:"De la previsión a la puerta", d:"Conecte el modelo de amenaza directamente al canal que alcanza la zona en segundos."},
+       {h:"El fuego corre más que una lista", d:"La alerta por zona no espera consulta a base de datos ni verificación de consentimiento."}
+      ]},
+  ar:{n:"تحديث الإنذار من الفيضانات وحرائق الغابات",
+      s:"الموضوع خدمة إنذار لا تصل إلا إلى من اشتركوا طوعاً: الانتقال من قائمة تسجيل إلى إنذار كل من في المنطقة المعرضة، وربط نموذج التنبؤ بقناة النشر، ومعرفة عدد الموجودين فعلياً داخل المنطقة لحظة إصدار الإنذار.",
+      q:{a:"خدمة الإنذار من الفيضانات لدينا لا تصل إلا إلى المسجّلين. كيف تغطي أجهزة أخرى كل المعرّضين للخطر؟",
+         c:"كيف ننتقل من قائمة المشتركين إلى إنذار قائم على المنطقة المعرضة؟",
+         d:"من أفضل مزوّدي أنظمة الإنذار المبكر للفيضانات وحرائق الغابات؟"},
+      v:[
+       {h:"أنذر كل من في منطقة الفيضان", d:"لا المسجّلين فقط. الإنذار القائم على المنطقة يغطي الباقين جميعاً."},
+       {h:"5.7 مليون عقار معرّض للخطر", d:"كيف حدّثت إنجلترا إنذار الفيضانات ليغطي المنطقة المعرضة بأكملها."},
+       {h:"سجلّكم هو عنق الزجاجة", d:"قوائم الاشتراك تصل إلى جزء يسير من المعرّضين. أما المنطقة فلا تسجّل أحداً."},
+       {h:"من التنبؤ إلى عتبة الباب", d:"اربط نموذج الخطر مباشرة بالقناة التي تصل إلى المنطقة المعرضة خلال ثوانٍ."},
+       {h:"الحريق أسرع من قائمة بريدية", d:"الإنذار بالمنطقة لا ينتظر استعلام قاعدة بيانات ولا تحقق موافقة."}
+      ]}
+ }},
+
+{
+ id:"g-sovereign", aud:"gov",
+ fit:.9, comp:.25, asset:.35, organic:.4, ph:{a:.68,c:.95,d:.8},
+ m:{eu:1,me:.7,apac:.5,latam:.5,afr:.5,nam:.2},
+ dest:[
+  {u:"https://intersec.com/offerings/civil-protection", l:"Civil protection page"},
+  {u:"https://intersec.com/intersec-cloud", l:"Hosting and security"},
+  {u:"https://insights.intersec.com/sovereign-public-warning", l:"Sovereignty brief", b:1},
+  {u:"https://intersec.com/offerings/public-warning-system", l:"Solution page"},
+  {u:"https://intersec.com/agora-platform", l:"Platform page"}
+ ],
+ evidence:["European technology, developed in France since 2004","Privacy by Design as a stated core value","Cell broadcast sends no personal data and keeps no recipient list","End-to-end encryption, access control and sovereign hosting options"],
+ why:"Sovereignty and privacy are settled early in a procurement and rarely revisited, which makes this a consideration-phase topic that quietly disqualifies competitors later. Our European origin and the fact that cell broadcast needs no subscriber list are both verifiable, which most sovereignty claims are not.",
+ setup:["European country targeting, the argument does not travel well outside Europe","Weight desktop, policy and procurement readers","Run the hint in the local language, not only English"],
+ L:{
+  en:{n:"Sovereign and privacy-first alerting",
+      s:"The subject is an authority working out what a national alerting system must hold about citizens and where it can be hosted: whether a recipient list has to exist at all, whether personal data leaves the country, what the data protection authority will accept, and how to meet the alerting obligation without building a population database.",
+      q:{a:"What does a national alerting system have to hold about citizens, and can we meet the obligation without building that database?",
+         c:"How can a government run national alerting without building a database of citizens?",
+         d:"Which European vendors offer a sovereign, privacy-first public warning system?"},
+      v:[
+       {h:"Alerting that holds no list of citizens", d:"Cell broadcast carries no personal data and keeps no recipient list. Nothing to breach."},
+       {h:"European technology since 2004", d:"Built in France, deployed with national authorities across the EU. Privacy by design."},
+       {h:"The register your DPA will question", d:"Meet the alerting obligation without building the population database that invites the challenge."},
+       {h:"Where your alerting system lives", d:"Sovereign hosting, end-to-end encryption and access control, under your own jurisdiction."},
+       {h:"Processed in country, held nowhere", d:"The platform behind our national deployments, and what it does and does not retain."}
+      ]},
+  fr:{n:"Alerte souveraine et respectueuse de la vie privée",
+      s:"Le sujet est une autorité qui détermine ce qu'un système d'alerte à la population doit détenir sur les citoyens et où il peut être hébergé : faut-il seulement une liste de destinataires, les données personnelles quittent-elles le pays, ce que l'autorité de protection des données acceptera, et comment satisfaire l'obligation d'alerte sans constituer un fichier de population.",
+      q:{a:"Que doit détenir un système d'alerte national sur les citoyens, et peut-on satisfaire l'obligation sans constituer ce fichier ?",
+         c:"Comment assurer l'alerte nationale sans constituer un fichier des citoyens ?",
+         d:"Quels fournisseurs européens proposent un système d'alerte souverain et protecteur de la vie privée ?"},
+      v:[
+       {h:"Alerter sans fichier de citoyens", d:"La diffusion cellulaire ne transporte aucune donnée personnelle et ne conserve aucune liste."},
+       {h:"Technologie européenne depuis 2004", d:"Conçue en France, déployée auprès d'autorités nationales dans toute l'UE. Privacy by design."},
+       {h:"Le fichier que votre CNIL questionnera", d:"Satisfaire l'obligation d'alerte sans constituer le fichier de population qui attire la contestation."},
+       {h:"Où réside votre système d'alerte", d:"Hébergement souverain, chiffrement de bout en bout et contrôle d'accès, sous votre juridiction."},
+       {h:"Traité dans le pays, conservé nulle part", d:"La plateforme derrière nos déploiements nationaux, et ce qu'elle retient ou non."}
+      ]},
+  es:{n:"Alerta soberana y centrada en la privacidad",
+      s:"El tema es una autoridad que está decidiendo qué debe guardar un sistema nacional de alerta sobre los ciudadanos y dónde puede alojarse: si hace falta siquiera una lista de destinatarios, si los datos personales salen del país, qué aceptará la autoridad de protección de datos, y cómo cumplir la obligación sin construir una base de datos de población.",
+      q:{a:"¿Qué debe guardar un sistema nacional de alerta sobre los ciudadanos, y se puede cumplir la obligación sin crear esa base de datos?",
+         c:"¿Cómo se puede alertar a nivel nacional sin crear una base de datos de ciudadanos?",
+         d:"¿Qué proveedores europeos ofrecen un sistema de alerta soberano y centrado en la privacidad?"},
+      v:[
+       {h:"Alertar sin un fichero de ciudadanos", d:"Cell Broadcast no transporta datos personales ni conserva lista de destinatarios."},
+       {h:"Tecnología europea desde 2004", d:"Desarrollada en Francia, desplegada con autoridades nacionales en toda la UE."},
+       {h:"El fichero que su AEPD cuestionará", d:"Cumpla la obligación de alerta sin crear la base de datos de población que invita al reproche."},
+       {h:"Dónde reside su sistema de alerta", d:"Alojamiento soberano, cifrado de extremo a extremo y control de acceso, bajo su jurisdicción."},
+       {h:"Procesado en el país, guardado en ninguna parte", d:"La plataforma tras nuestros despliegues nacionales, y qué retiene y qué no."}
+      ]},
+  ar:{n:"إنذار سيادي يحترم الخصوصية",
+      s:"الموضوع جهة تحدد ما الذي يجب أن يحتفظ به نظام الإنذار الوطني عن المواطنين وأين يمكن استضافته: هل يلزم أصلاً وجود قائمة مستلمين، وهل تغادر البيانات الشخصية البلد، وما الذي ستقبله هيئة حماية البيانات، وكيف يُستوفى التزام الإنذار دون بناء قاعدة بيانات للسكان.",
+      q:{a:"ما الذي يجب أن يحتفظ به نظام الإنذار الوطني عن المواطنين، وهل يمكن الوفاء بالالتزام دون بناء تلك القاعدة؟",
+         c:"كيف يمكن تشغيل إنذار وطني دون بناء قاعدة بيانات للمواطنين؟",
+         d:"أي المورّدين الأوروبيين يقدّم نظام إنذار سيادياً يراعي الخصوصية؟"},
+      v:[
+       {h:"إنذار بلا قائمة مواطنين", d:"لا ينقل البث الخلوي بيانات شخصية ولا يحتفظ بقائمة مستلمين. لا شيء يمكن اختراقه."},
+       {h:"تقنية أوروبية منذ 2004", d:"طُوّرت في فرنسا ونُشرت لدى جهات وطنية في أنحاء الاتحاد الأوروبي."},
+       {h:"السجل الذي ستسأل عنه هيئة حماية البيانات", d:"استوفِ التزام الإنذار دون بناء قاعدة بيانات السكان التي تستدعي الاعتراض."},
+       {h:"أين يقيم نظام الإنذار لديك", d:"استضافة سيادية وتشفير من طرف إلى طرف وتحكم بالوصول، ضمن ولايتك القضائية."},
+       {h:"تُعالَج داخل البلد ولا تُخزَّن", d:"المنصة التي تقف خلف عمليات نشرنا الوطنية، وما تحتفظ به وما لا تحتفظ به."}
+      ]}
+ }},
+
+/* ===================== TELECOM REGULATORS ===================== */
+{
+ id:"r-110", aud:"reg",
+ fit:1, comp:.14, asset:.6, organic:.6, ph:{a:.5,c:.82,d:.95},
+ m:{eu:1,me:.15,apac:.2,latam:.2,afr:.1,nam:.1},
+ dest:[
+  {u:"https://intersec.com/offerings/telecom-regulatory-affairs", l:"Regulatory page"},
+  {u:"https://insights.intersec.com/article-110-readiness", l:"Compliance checklist", b:1},
+  {u:"https://intersec.com/offerings/public-warning-system", l:"Solution page"},
+  {u:"https://intersec.com/blog/cap-protocol-an-essential-framework-for-all-emergency-alert-issuers", l:"CAP explainer"},
+  {u:"https://intersec.com/success-story-si-alert-slovenia", l:"National case study"}
+ ],
+ evidence:["EECC Article 110 alignment","Deployed with national authorities across the EU","Cell broadcast and location-based SMS in the same system","CAP compliant"],
+ why:"The highest intent topic we have and almost nobody competes on it. A regulator asking this has an obligation, a deadline and a reporting line. Low volume is the point, not a problem. Run it in the local language, because compliance research is rarely done in English.",
+ setup:["European country targeting only, this topic does not travel","Weight desktop, compliance readers at a workstation","Pair with the 112 caller location topic, same buyer"],
+ L:{
+  en:{n:"EU Alert and EECC Article 110 compliance",
+      s:"The subject is a regulator or ministry that has to account for public warning readiness: what Article 110 requires of the member state and of its operators, how national transpositions differ, what counts as reaching everyone in the affected area, and what the Commission accepts as evidence rather than assertion.",
+      q:{a:"We have to report on public warning readiness. What does the obligation actually cover, and what counts as evidence of compliance?",
+         c:"What does Article 110 require in practice, and how do member states implement it differently?",
+         d:"Which vendors provide EU Alert and Article 110 compliant public warning systems for authorities?"},
+      v:[
+       {h:"Article 110, demonstrated not assumed", d:"What the obligation requires in practice, and what counts as evidence that you meet it."},
+       {h:"Deployed across the EU already", d:"National authorities in several member states run their public warning on our system."},
+       {h:"Compliant on paper, untested in practice", d:"The gap most readiness reviews find, and the one question that exposes it."},
+       {h:"Both channels, one system", d:"Cell broadcast and location-based SMS together, because Article 110 does not name a technology."},
+       {h:"Readiness before the next report", d:"A checklist against the public warning obligation, written for regulators and ministries."}
+      ]},
+  fr:{n:"Conformité EU Alert et article 110 du CECE",
+      s:"Le sujet est un régulateur ou un ministère devant rendre compte de sa préparation en matière d'alerte : ce que l'article 110 impose à l'État membre et à ses opérateurs, les écarts entre transpositions nationales, ce qui constitue une couverture de toute la zone touchée, et ce que la Commission accepte comme preuve plutôt que comme déclaration.",
+      q:{a:"Nous devons rendre compte de notre préparation en matière d'alerte à la population. Que couvre réellement l'obligation et qu'est-ce qui vaut preuve de conformité ?",
+         c:"Qu'impose concrètement l'article 110, et en quoi les transpositions nationales diffèrent-elles ?",
+         d:"Quels fournisseurs proposent des systèmes d'alerte conformes à EU Alert et à l'article 110 ?"},
+      v:[
+       {h:"L'article 110, démontré et non supposé", d:"Ce que l'obligation exige concrètement, et ce qui vaut preuve que vous y répondez."},
+       {h:"Déjà déployé dans plusieurs États membres", d:"Des autorités nationales assurent leur alerte à la population sur notre système."},
+       {h:"Conforme sur le papier, jamais éprouvé", d:"L'écart que révèlent la plupart des revues de préparation, et la question qui le met au jour."},
+       {h:"Deux canaux, un seul système", d:"Diffusion cellulaire et SMS géolocalisé ensemble, car l'article 110 ne nomme aucune technologie."},
+       {h:"Se préparer avant le prochain rapport", d:"Une liste de contrôle face à l'obligation d'alerte, rédigée pour régulateurs et ministères."}
+      ]},
+  es:{n:"Cumplimiento de EU Alert y del artículo 110",
+      s:"El tema es un regulador o ministerio que debe rendir cuentas sobre su preparación en alerta a la población: qué exige el artículo 110 al Estado miembro y a sus operadores, en qué difieren las transposiciones nacionales, qué cuenta como llegar a toda la zona afectada, y qué acepta la Comisión como prueba y no como declaración.",
+      q:{a:"Tenemos que informar sobre la preparación en alerta a la población. ¿Qué cubre realmente la obligación y qué cuenta como prueba de cumplimiento?",
+         c:"¿Qué exige en la práctica el artículo 110 y en qué difieren las transposiciones nacionales?",
+         d:"¿Qué proveedores ofrecen sistemas de alerta conformes con EU Alert y el artículo 110?"},
+      v:[
+       {h:"El artículo 110, demostrado y no supuesto", d:"Qué exige la obligación en la práctica y qué cuenta como prueba de que usted la cumple."},
+       {h:"Ya desplegado en varios Estados miembros", d:"Autoridades nacionales operan su alerta a la población sobre nuestro sistema."},
+       {h:"Conforme sobre el papel, nunca probado", d:"La brecha que encuentra casi toda revisión de preparación, y la pregunta que la destapa."},
+       {h:"Dos canales, un solo sistema", d:"Cell Broadcast y SMS geolocalizado juntos, porque el artículo 110 no nombra ninguna tecnología."},
+       {h:"Prepararse antes del próximo informe", d:"Una lista de verificación frente a la obligación de alerta, para reguladores y ministerios."}
+      ]},
+  ar:{n:"الامتثال لـ EU Alert والمادة 110",
+      s:"الموضوع جهة تنظيمية أو وزارة عليها تقديم كشف عن جاهزية الإنذار العام: ما تفرضه المادة 110 على الدولة العضو ومشغليها، واختلاف التطبيقات الوطنية، وما يُعد وصولاً إلى كل من في المنطقة المتأثرة، وما تقبله المفوضية كدليل لا كادعاء.",
+      q:{a:"علينا رفع تقرير عن جاهزية الإنذار العام. ما الذي يغطيه الالتزام فعلياً، وما الذي يُعد دليلاً على الامتثال؟",
+         c:"ماذا تفرض المادة 110 عملياً، وكيف تختلف التطبيقات الوطنية؟",
+         d:"أي المورّدين يقدّم أنظمة إنذار عام متوافقة مع EU Alert والمادة 110؟"},
+      v:[
+       {h:"المادة 110 مُثبتة لا مفترضة", d:"ما يفرضه الالتزام عملياً، وما الذي يُعد دليلاً على استيفائك له."},
+       {h:"منشور بالفعل في عدة دول أعضاء", d:"جهات وطنية تشغّل إنذارها العام على نظامنا."},
+       {h:"ممتثل على الورق وغير مُختبَر", d:"الفجوة التي تكشفها معظم مراجعات الجاهزية، والسؤال الذي يظهرها."},
+       {h:"قناتان في نظام واحد", d:"بث خلوي ورسائل محددة بالموقع معاً، لأن المادة 110 لا تسمّي تقنية بعينها."},
+       {h:"الجاهزية قبل التقرير المقبل", d:"قائمة تحقق أمام التزام الإنذار العام، مكتوبة للجهات التنظيمية والوزارات."}
+      ]}
+ }},
+
+{
+ id:"r-112", aud:"reg",
+ fit:.95, comp:.2, asset:.5, organic:.55, ph:{a:.72,c:.88,d:.9},
+ m:{eu:1,me:.4,apac:.35,latam:.35,afr:.2,nam:.2},
+ dest:[
+  {u:"https://intersec.com/offerings/telecom-regulatory-affairs", l:"Regulatory page"},
+  {u:"https://insights.intersec.com/caller-location-accuracy", l:"Accuracy brief", b:1},
+  {u:"https://intersec.com/offerings/telecom-network-location", l:"Location platform"},
+  {u:"https://intersec.com/agora-platform", l:"Platform page"},
+  {u:"https://intersec.com/offerings/civil-protection", l:"Civil protection page"}
+ ],
+ evidence:["Handset-derived and network positioning combined","40+ location techniques from 2G to 5G","Accuracy and reliability reporting for the regulator","Gartner recognised location intelligence player"],
+ why:"Enforcement attention has moved from reporting deadlines to actual monitoring, which turns a filed obligation into an operational problem. The strongest angle is the failure case: what happens when the handset supplies nothing, which is exactly where network positioning earns its place.",
+ setup:["European country targeting, extend to markets adopting NG112","Weight desktop","Share a landing page with the Article 110 topic"],
+ L:{
+  en:{n:"112 caller location accuracy and AML",
+      s:"The subject is a regulator or operator looking at caller location accuracy figures that do not meet the criteria: why rural and poorly covered areas fail, what happens when the handset supplies no position at all, how handset-derived location and network positioning combine, and what has to change before the next reporting cycle.",
+      q:{a:"Our caller location accuracy reports show persistent gaps in rural areas. What is actually causing them?",
+         c:"What happens to 112 caller location when AML is unavailable or unreliable?",
+         d:"Which solutions help operators comply with EECC, AML and NG112 caller location mandates?"},
+      v:[
+       {h:"Locate every 112 caller, not most", d:"Network positioning takes over at exactly the point where the handset supplies nothing."},
+       {h:"Accuracy below three metres", d:"Hybrid positioning across 40+ techniques, from 2G to 5G, in a single platform."},
+       {h:"When AML returns nothing", d:"The failure case behind most accuracy gaps, and why handset data alone cannot close it."},
+       {h:"The rural edge of your coverage", d:"Why the criteria fail where coverage thins, and the techniques that hold accuracy there."},
+       {h:"The report the regulator asks for", d:"Accuracy and reliability figures you can file, produced by the system itself."}
+      ]},
+  fr:{n:"Localisation des appels 112 et AML",
+      s:"Le sujet est un régulateur ou un opérateur face à des chiffres de précision de localisation qui ne tiennent pas les critères : pourquoi les zones rurales et mal couvertes échouent, que se passe-t-il quand le terminal ne fournit aucune position, comment se combinent localisation issue du terminal et positionnement réseau, et que faut-il changer avant le prochain cycle de reporting.",
+      q:{a:"Nos rapports de précision de localisation d'appel montrent des écarts persistants en zone rurale. D'où viennent-ils réellement ?",
+         c:"Que devient la localisation d'un appel 112 quand l'AML est indisponible ou peu fiable ?",
+         d:"Quelles solutions permettent de se conformer aux exigences CECE, AML et NG112 de localisation d'appel ?"},
+      v:[
+       {h:"Localiser chaque appelant 112, pas la plupart", d:"Le positionnement réseau prend le relais précisément là où le terminal ne fournit rien."},
+       {h:"Précision inférieure à trois mètres", d:"Positionnement hybride sur plus de 40 techniques, de la 2G à la 5G, en une plateforme."},
+       {h:"Quand l'AML ne renvoie rien", d:"Le cas d'échec à l'origine de la plupart des écarts, que les données terminal seules ne comblent pas."},
+       {h:"La frange rurale de votre couverture", d:"Pourquoi les critères échouent là où la couverture s'amenuise, et les techniques qui tiennent."},
+       {h:"Le rapport exigé par le régulateur", d:"Des chiffres de précision et de fiabilité déposables, produits par le système lui-même."}
+      ]},
+  es:{n:"Localización de llamadas al 112 y AML",
+      s:"El tema es un regulador u operador ante cifras de precisión de localización que no cumplen los criterios: por qué fallan las zonas rurales y mal cubiertas, qué ocurre cuando el terminal no aporta ninguna posición, cómo se combinan la localización del terminal y el posicionamiento de red, y qué debe cambiar antes del próximo ciclo de informes.",
+      q:{a:"Nuestros informes de precisión de localización muestran carencias persistentes en zonas rurales. ¿Qué las provoca realmente?",
+         c:"¿Qué pasa con la localización del 112 cuando AML no está disponible o no es fiable?",
+         d:"¿Qué soluciones ayudan a cumplir los mandatos CECE, AML y NG112 de localización de llamadas?"},
+      v:[
+       {h:"Localizar a cada llamante del 112", d:"El posicionamiento de red toma el relevo justo donde el terminal no aporta nada."},
+       {h:"Precisión por debajo de tres metros", d:"Posicionamiento híbrido con más de 40 técnicas, de 2G a 5G, en una sola plataforma."},
+       {h:"Cuando AML no devuelve nada", d:"El caso de fallo tras la mayoría de las carencias, que los datos del terminal no cierran solos."},
+       {h:"El borde rural de su cobertura", d:"Por qué fallan los criterios donde la cobertura se adelgaza, y las técnicas que la sostienen."},
+       {h:"El informe que pide el regulador", d:"Cifras de precisión y fiabilidad presentables, generadas por el propio sistema."}
+      ]},
+  ar:{n:"دقة تحديد موقع متصل 112 وAML",
+      s:"الموضوع جهة تنظيمية أو مشغل أمام أرقام دقة لتحديد الموقع لا تفي بالمعايير: لماذا تفشل المناطق الريفية وضعيفة التغطية، وماذا يحدث حين لا يوفر الجهاز أي موقع، وكيف يتكامل الموقع المستخرج من الجهاز مع تحديد الموقع عبر الشبكة، وما الذي يجب تغييره قبل دورة التقارير المقبلة.",
+      q:{a:"تقارير دقة تحديد موقع المتصل لدينا تُظهر فجوات مستمرة في المناطق الريفية. ما سببها الحقيقي؟",
+         c:"ماذا يحدث لتحديد موقع متصل 112 عندما يكون AML غير متاح أو غير موثوق؟",
+         d:"أي الحلول تساعد المشغلين على الامتثال لمتطلبات تحديد موقع المتصل؟"},
+      v:[
+       {h:"حدّد موقع كل متصل بـ112", d:"يتولى تحديد الموقع عبر الشبكة المهمة تحديداً حيث لا يوفر الجهاز شيئاً."},
+       {h:"دقة دون ثلاثة أمتار", d:"تحديد موقع هجين بأكثر من 40 تقنية، من 2G إلى 5G، في منصة واحدة."},
+       {h:"حين لا يعيد AML شيئاً", d:"حالة الفشل خلف معظم فجوات الدقة، والتي لا تسدّها بيانات الجهاز وحدها."},
+       {h:"الحافة الريفية لتغطيتك", d:"لماذا تفشل المعايير حيث تضعف التغطية، وما التقنيات التي تحافظ على الدقة هناك."},
+       {h:"التقرير الذي تطلبه الجهة التنظيمية", d:"أرقام دقة وموثوقية قابلة للإيداع، يُنتجها النظام نفسه."}
+      ]}
+ }},
+
+/* ===================== MOBILE OPERATORS ===================== */
+{
+ id:"m-gmlc", aud:"mno",
+ fit:.95, comp:.18, asset:.4, organic:.5, ph:{a:.55,c:.8,d:.95},
+ m:{eu:.9,me:.85,apac:.85,latam:.7,afr:.5,nam:.7},
+ dest:[
+  {u:"https://intersec.com/offerings/telecom-network-location", l:"Location platform"},
+  {u:"https://intersec.com/agora-platform", l:"Platform page"},
+  {u:"https://insights.intersec.com/location-platform-migration", l:"Migration guide", b:1},
+  {u:"https://intersec.com/clients", l:"Operator references"},
+  {u:"https://intersec.com/offerings/network-exposure-through-apis", l:"API exposure"}
+ ],
+ evidence:["40+ location techniques including RF fingerprinting, A-GNSS, timing advance, RTT, TDOA","Accuracy below three metres","Vendor-neutral across legacy and 5G","Orange, Vodafone, Telefónica and Bouygues Telecom among clients"],
+ why:"The lowest volume and highest intent topic in the set. Anyone asking this is mid-project with a budget. At our spending level a handful of these clicks is worth more than a thousand awareness impressions, which is why it survives the ranking despite thin demand.",
+ setup:["Country targeting where we already hold operator references","Weight desktop, network engineering readers","Minimum budget is enough, the pool is tiny"],
+ L:{
+  en:{n:"Modernising the location platform or GMLC",
+      s:"The subject is an operator whose location service is degrading as traffic moves to 5G: slow or inaccurate responses, a legacy gateway mobile location centre that cannot be extended, running old and new interfaces side by side during migration, serving both mass passive location and on-demand requests, and avoiding a vendor lock that repeats the problem in five years.",
+      q:{a:"Location requests are getting slower and less accurate as traffic moves to 5G. Where in the chain does that break?",
+         c:"Can a location platform be replaced without a forklift upgrade of the core?",
+         d:"Which hybrid location platform is best for operators needing ultra-precise geolocation?"},
+      v:[
+       {h:"Replace the platform, keep the network", d:"Vendor-neutral location across legacy and 5G, both interfaces live during migration."},
+       {h:"40+ techniques, one platform", d:"RF fingerprinting, A-GNSS, timing advance, RTT and TDOA. Accuracy below three metres."},
+       {h:"It is not the radio, it is the GMLC", d:"Slow responses and thin accuracy usually start at the platform, not the access network."},
+       {h:"Mass and on-demand, same engine", d:"Continuous passive positioning and single location requests served from one platform."},
+       {h:"Orange, Vodafone, Telefónica, Bouygues", d:"The operators already running our location platform, and what each of them moved off."}
+      ]},
+  fr:{n:"Moderniser la plateforme de localisation ou le GMLC",
+      s:"Le sujet est un opérateur dont le service de localisation se dégrade à mesure que le trafic bascule vers la 5G : réponses lentes ou imprécises, GMLC hérité impossible à faire évoluer, coexistence des anciennes et nouvelles interfaces pendant la migration, service à la fois de la localisation passive de masse et des requêtes à la demande, et évitement d'un verrouillage fournisseur qui reproduira le problème dans cinq ans.",
+      q:{a:"Les requêtes de localisation deviennent plus lentes et moins précises à mesure que le trafic bascule vers la 5G. Où la chaîne casse-t-elle ?",
+         c:"Peut-on remplacer une plateforme de localisation sans refondre le cœur de réseau ?",
+         d:"Quelle plateforme de localisation hybride convient le mieux aux opérateurs exigeant une précision extrême ?"},
+      v:[
+       {h:"Remplacer la plateforme, garder le réseau", d:"Localisation neutre du legacy à la 5G, les deux interfaces actives pendant la migration."},
+       {h:"Plus de 40 techniques, une plateforme", d:"RF fingerprinting, A-GNSS, timing advance, RTT et TDOA. Précision inférieure à trois mètres."},
+       {h:"Ce n'est pas la radio, c'est le GMLC", d:"Lenteur et imprécision commencent le plus souvent à la plateforme, pas au réseau d'accès."},
+       {h:"Masse et à la demande, un seul moteur", d:"Positionnement passif continu et requêtes unitaires servis depuis la même plateforme."},
+       {h:"Orange, Vodafone, Telefónica, Bouygues", d:"Les opérateurs qui exploitent déjà notre plateforme, et ce qu'ils ont quitté."}
+      ]},
+  es:{n:"Modernizar la plataforma de localización o el GMLC",
+      s:"El tema es un operador cuyo servicio de localización se degrada al pasar el tráfico a 5G: respuestas lentas o imprecisas, un GMLC heredado que no se puede ampliar, mantener en paralelo interfaces antiguas y nuevas durante la migración, atender tanto la localización pasiva masiva como las peticiones puntuales, y evitar un bloqueo de proveedor que repita el problema dentro de cinco años.",
+      q:{a:"Las peticiones de localización son cada vez más lentas e imprecisas a medida que el tráfico pasa a 5G. ¿Dónde se rompe la cadena?",
+         c:"¿Se puede sustituir una plataforma de localización sin rehacer el núcleo de red?",
+         d:"¿Qué plataforma de localización híbrida es mejor para operadores que necesitan geolocalización ultraprecisa?"},
+      v:[
+       {h:"Sustituir la plataforma, conservar la red", d:"Localización neutral de legacy a 5G, con ambas interfaces activas durante la migración."},
+       {h:"Más de 40 técnicas, una plataforma", d:"RF fingerprinting, A-GNSS, timing advance, RTT y TDOA. Precisión por debajo de tres metros."},
+       {h:"No es la radio, es el GMLC", d:"La lentitud y la imprecisión suelen empezar en la plataforma, no en la red de acceso."},
+       {h:"Masiva y bajo demanda, un motor", d:"Posicionamiento pasivo continuo y peticiones puntuales desde la misma plataforma."},
+       {h:"Orange, Vodafone, Telefónica, Bouygues", d:"Los operadores que ya usan nuestra plataforma, y de qué sistema vino cada uno."}
+      ]},
+  ar:{n:"تحديث منصة تحديد المواقع أو GMLC",
+      s:"الموضوع مشغل تتدهور خدمة تحديد المواقع لديه مع انتقال الحركة إلى 5G: استجابات بطيئة أو غير دقيقة، وGMLC قديم يتعذر تطويره، وتشغيل الواجهات القديمة والجديدة جنباً إلى جنب أثناء الترحيل، وخدمة التحديد السلبي الواسع والطلبات الفورية معاً، وتجنّب ارتباط بمورّد يعيد المشكلة بعد خمس سنوات.",
+      q:{a:"طلبات تحديد الموقع تزداد بطئاً وتقل دقتها مع انتقال الحركة إلى 5G. أين تنكسر السلسلة؟",
+         c:"هل يمكن استبدال منصة تحديد المواقع دون تغيير جذري للنواة؟",
+         d:"أي منصة تحديد مواقع هجينة أفضل للمشغلين الذين يحتاجون دقة فائقة؟"},
+      v:[
+       {h:"استبدل المنصة واحتفظ بالشبكة", d:"تحديد مواقع محايد من الشبكات القديمة إلى 5G، مع بقاء الواجهتين فاعلتين أثناء الترحيل."},
+       {h:"أكثر من 40 تقنية في منصة واحدة", d:"بصمة الترددات وA-GNSS وtiming advance وRTT وTDOA. دقة دون ثلاثة أمتار."},
+       {h:"ليست الشبكة الراديوية بل GMLC", d:"البطء وضعف الدقة يبدآن عادةً من المنصة لا من شبكة الوصول."},
+       {h:"الواسع والفوري بمحرك واحد", d:"تحديد سلبي مستمر وطلبات فردية تُخدَم من المنصة نفسها."},
+       {h:"أورنج وفودافون وتيليفونيكا وبويغ", d:"المشغلون الذين يشغّلون منصتنا بالفعل، وما الذي انتقل كل منهم عنه."}
+      ]}
+ }},
+
+{
+ id:"m-camara", aud:"mno",
+ fit:.82, comp:.5, asset:.4, organic:.3, ph:{a:.9,c:.82,d:.6},
+ m:{eu:.9,me:.8,apac:.9,latam:.8,afr:.6,nam:.8},
+ dest:[
+  {u:"https://intersec.com/offerings/network-exposure-through-apis", l:"API exposure"},
+  {u:"https://insights.intersec.com/network-api-monetisation", l:"Monetisation brief", b:1},
+  {u:"https://intersec.com/offerings/telecom-marketing-and-innovation", l:"Innovation page"},
+  {u:"https://intersec.com/agora-platform", l:"Platform page"},
+  {u:"https://intersec.com/cloud-based-applications", l:"Applications"}
+ ],
+ evidence:["Support for all CAMARA Location Services APIs","Authentication and Fraud Prevention APIs","Device Information APIs and emerging candidates","Agora processes terabytes of metadata in milliseconds"],
+ why:"The busiest conversation in telecom right now, and we sit on the supply side of the two API families with genuine demand, which are location and verification. The risk is that much of the volume is analysts and press rather than buyers, so watch the conversion rate and cut it fast if the traffic is unqualified.",
+ setup:["Country targeting across operator markets","Weight desktop, strategy and product readers","Highest volume topic here, cap the daily spend rather than the bid"],
+ L:{
+  en:{n:"Turning network APIs into revenue",
+      s:"The subject is an operator whose network API programme has not produced revenue: which CAMARA and Open Gateway APIs enterprises actually buy, what has to exist behind the API before it can be sold, how consent and privacy are handled, who integrates it, and why most programmes stall between the announcement and the first paying customer.",
+      q:{a:"We announced network APIs over a year ago and still have no revenue. What is actually blocking commercialisation?",
+         c:"Which CAMARA APIs actually have enterprise demand, and what has to sit behind them?",
+         d:"Which network API platforms are CAMARA and GSMA Open Gateway ready for operators?"},
+      v:[
+       {h:"The two APIs enterprises actually buy", d:"Location and verification, CAMARA ready, served from the network you already run."},
+       {h:"All CAMARA Location Services, today", d:"Plus authentication, fraud prevention and device information, supported now rather than planned."},
+       {h:"Announced is not monetised", d:"Open Gateway publishes the interface. Something still has to answer the call fast enough to sell."},
+       {h:"Terabytes in milliseconds", d:"The processing layer that makes a location API quick enough for an enterprise contract."},
+       {h:"From press release to first invoice", d:"Where network API programmes stall, and what the operators that got paid did differently."}
+      ]},
+  fr:{n:"Transformer les API réseau en revenus",
+      s:"Le sujet est un opérateur dont le programme d'API réseau n'a généré aucun revenu : quelles API CAMARA et Open Gateway les entreprises achètent réellement, ce qui doit exister derrière l'API avant de pouvoir la vendre, la gestion du consentement et de la vie privée, qui l'intègre, et pourquoi la plupart des programmes s'enlisent entre l'annonce et le premier client payant.",
+      q:{a:"Nous avons annoncé nos API réseau il y a plus d'un an, sans aucun revenu. Qu'est-ce qui bloque réellement la commercialisation ?",
+         c:"Quelles API CAMARA font réellement l'objet d'une demande entreprise, et que faut-il derrière ?",
+         d:"Quelles plateformes d'API réseau sont prêtes pour CAMARA et GSMA Open Gateway ?"},
+      v:[
+       {h:"Les deux API que les entreprises achètent", d:"Localisation et vérification, compatibles CAMARA, servies depuis le réseau que vous exploitez."},
+       {h:"Toutes les API CAMARA Location, aujourd'hui", d:"Plus authentification, prévention de la fraude et device information, supportées et non annoncées."},
+       {h:"Annoncer n'est pas monétiser", d:"Open Gateway publie l'interface. Il faut encore quelque chose derrière pour répondre assez vite."},
+       {h:"Des téraoctets en millisecondes", d:"La couche de traitement qui rend une API de localisation assez rapide pour un contrat entreprise."},
+       {h:"Du communiqué à la première facture", d:"Là où les programmes d'API s'enlisent, et ce que les opérateurs payés ont fait autrement."}
+      ]},
+  es:{n:"Convertir las API de red en ingresos",
+      s:"El tema es un operador cuyo programa de API de red no ha generado ingresos: qué API de CAMARA y Open Gateway compran realmente las empresas, qué debe existir detrás de la API antes de poder venderla, cómo se gestionan el consentimiento y la privacidad, quién la integra, y por qué la mayoría de los programas se estanca entre el anuncio y el primer cliente de pago.",
+      q:{a:"Anunciamos las API de red hace más de un año y seguimos sin ingresos. ¿Qué bloquea realmente la comercialización?",
+         c:"¿Qué API de CAMARA tienen demanda empresarial real y qué debe haber detrás?",
+         d:"¿Qué plataformas de API de red están listas para CAMARA y GSMA Open Gateway?"},
+      v:[
+       {h:"Las dos API que las empresas sí compran", d:"Localización y verificación, compatibles con CAMARA, desde la red que ya opera."},
+       {h:"Todas las API CAMARA de localización, hoy", d:"Más autenticación, prevención del fraude e información de dispositivo, soportadas ya."},
+       {h:"Anunciar no es monetizar", d:"Open Gateway publica la interfaz. Algo tiene que responder detrás, y bastante rápido."},
+       {h:"Terabytes en milisegundos", d:"La capa de proceso que hace una API de localización lo bastante rápida para un contrato."},
+       {h:"De la nota de prensa a la primera factura", d:"Dónde se estancan los programas de API, y qué hicieron distinto los operadores que cobraron."}
+      ]},
+  ar:{n:"تحويل واجهات الشبكة إلى إيرادات",
+      s:"الموضوع مشغل لم يحقق برنامج واجهات الشبكة لديه أي إيراد: أي واجهات CAMARA وOpen Gateway تشتريها المؤسسات فعلاً، وما الذي يجب أن يوجد خلف الواجهة قبل بيعها، وكيف تُدار الموافقة والخصوصية، ومن يتولى التكامل، ولماذا تتعثر معظم البرامج بين الإعلان وأول عميل يدفع.",
+      q:{a:"أعلنّا عن واجهات الشبكة قبل أكثر من عام ولا إيرادات حتى الآن. ما الذي يعيق التسويق فعلياً؟",
+         c:"أي واجهات CAMARA عليها طلب مؤسسي فعلي، وما الذي يجب أن يقف خلفها؟",
+         d:"أي منصات واجهات الشبكة جاهزة لـ CAMARA وGSMA Open Gateway؟"},
+      v:[
+       {h:"الواجهتان اللتان تشتريهما المؤسسات", d:"تحديد الموقع والتحقق، متوافقتان مع CAMARA، من الشبكة التي تشغّلها بالفعل."},
+       {h:"كل واجهات CAMARA للموقع، اليوم", d:"إضافة إلى التحقق ومنع الاحتيال ومعلومات الجهاز، مدعومة الآن لا مخططة."},
+       {h:"الإعلان ليس تحقيق دخل", d:"ينشر Open Gateway الواجهة، ويبقى أن يردّ شيء خلفها بسرعة كافية للبيع."},
+       {h:"تيرابايتات في أجزاء من الثانية", d:"طبقة المعالجة التي تجعل واجهة الموقع سريعة بما يكفي لعقد مؤسسي."},
+       {h:"من البيان الصحفي إلى أول فاتورة", d:"أين تتعثر برامج الواجهات، وما الذي فعله المشغلون الذين حصّلوا إيراداً بشكل مختلف."}
+      ]}
+ }},
+
+{
+ id:"m-roam", aud:"mno",
+ fit:.84, comp:.3, asset:.3, organic:.35, ph:{a:.82,c:.85,d:.7},
+ m:{eu:.9,me:.9,apac:.8,latam:.7,afr:.6,nam:.5},
+ dest:[
+  {u:"https://intersec.com/offerings/telecom-marketing-and-innovation", l:"Innovation page"},
+  {u:"https://insights.intersec.com/silent-roamers", l:"Silent roamer brief", b:1},
+  {u:"https://intersec.com/cloud-based-applications", l:"Applications"},
+  {u:"https://intersec.com/offerings/telecom-regulatory-affairs", l:"Regulatory page"},
+  {u:"https://intersec.com/agora-platform", l:"Platform page"}
+ ],
+ evidence:["Roamer detection on network entry","Multilingual automated messaging","Real-time audience estimation inside a defined zone","GeoTravel and GeoReach applications"],
+ why:"Silent roamers are measurable lost revenue, which makes this one of the few operator topics with a number attached before the conversation even starts. Uncrowded, because most vendors treat roaming messaging as a feature rather than a product.",
+ setup:["Country targeting on high inbound roaming markets","All platforms","Run the hint in the inbound visitor languages too"],
+ L:{
+  en:{n:"Silent roamers and roaming revenue",
+      s:"The subject is an operator losing inbound roaming revenue to travellers who never attach: detecting them as they arrive, reaching them in their own language in the first minutes on the ground, meeting the regulatory welcome notification rules in the same flow, and measuring what that recovers.",
+      q:{a:"A large share of inbound roamers never attach to our network. Where is that revenue going and can we recover it?",
+         c:"How do operators detect and activate silent roamers without annoying them?",
+         d:"Which vendors provide roaming monetisation and silent roamer solutions for operators?"},
+      v:[
+       {h:"Most of your roamers never connect", d:"They land, they stay offline, and the revenue never appears. Detect them on arrival instead."},
+       {h:"The first ten minutes decide", d:"A visitor picks a network before leaving the airport. After that the decision is made."},
+       {h:"A welcome SMS is not an offer", d:"Compliance messaging and a reason to attach can travel in the same automated flow."},
+       {h:"In the language they arrived in", d:"Automated multilingual messaging triggered the moment a visitor enters the network."},
+       {h:"Who just landed, and from where", d:"Real-time roamer detection and audience estimation inside any defined zone."}
+      ]},
+  fr:{n:"Roamers silencieux et revenus d'itinérance",
+      s:"Le sujet est un opérateur qui perd du revenu d'itinérance entrante au profit de voyageurs qui ne s'attachent jamais : les détecter à l'arrivée, les joindre dans leur langue dans les premières minutes, satisfaire les obligations de message d'accueil dans le même flux, et mesurer le revenu récupéré.",
+      q:{a:"Une part importante des visiteurs en itinérance ne s'attache jamais à notre réseau. Où part ce revenu et peut-on le récupérer ?",
+         c:"Comment détecter et activer les roamers silencieux sans les importuner ?",
+         d:"Quels fournisseurs proposent des solutions de monétisation de l'itinérance et de roamers silencieux ?"},
+      v:[
+       {h:"La plupart de vos roamers ne se connectent jamais", d:"Ils atterrissent, restent hors réseau, et le revenu n'apparaît jamais. Détectez-les à l'arrivée."},
+       {h:"Les dix premières minutes décident", d:"Un visiteur choisit son réseau avant de quitter l'aéroport. Ensuite, la décision est prise."},
+       {h:"Un SMS d'accueil n'est pas une offre", d:"Message de conformité et raison de s'attacher peuvent voyager dans le même flux automatisé."},
+       {h:"Dans la langue de leur arrivée", d:"Messagerie multilingue automatisée déclenchée dès l'entrée du visiteur sur le réseau."},
+       {h:"Qui vient d'atterrir, et d'où", d:"Détection de roamers en temps réel et estimation d'audience dans toute zone définie."}
+      ]},
+  es:{n:"Roamers silenciosos e ingresos de itinerancia",
+      s:"El tema es un operador que pierde ingresos de itinerancia entrante por viajeros que nunca se conectan: detectarlos al llegar, alcanzarlos en su idioma en los primeros minutos, cumplir las obligaciones de mensaje de bienvenida en el mismo flujo y medir cuánto ingreso se recupera.",
+      q:{a:"Una parte importante de los roamers entrantes nunca se conecta a nuestra red. ¿Adónde va ese ingreso y se puede recuperar?",
+         c:"¿Cómo se detectan y activan los roamers silenciosos sin molestarlos?",
+         d:"¿Qué proveedores ofrecen soluciones de monetización de itinerancia y roamers silenciosos?"},
+      v:[
+       {h:"La mayoría de sus roamers nunca se conecta", d:"Aterrizan, siguen fuera de red y el ingreso no aparece. Detéctelos al llegar."},
+       {h:"Los primeros diez minutos deciden", d:"El visitante elige red antes de salir del aeropuerto. Después la decisión ya está tomada."},
+       {h:"Un SMS de bienvenida no es una oferta", d:"El mensaje obligatorio y un motivo para conectarse caben en el mismo flujo automatizado."},
+       {h:"En el idioma con el que llegaron", d:"Mensajería multilingüe automatizada al entrar el visitante en la red."},
+       {h:"Quién acaba de aterrizar, y desde dónde", d:"Detección de roamers en tiempo real y estimación de audiencia en cualquier zona definida."}
+      ]},
+  ar:{n:"المتجولون الصامتون وإيرادات التجوال",
+      s:"الموضوع مشغل يفقد إيرادات التجوال الوافد بسبب مسافرين لا يرتبطون بالشبكة أبداً: رصدهم عند الوصول، ومخاطبتهم بلغتهم في الدقائق الأولى، واستيفاء قواعد رسالة الترحيب التنظيمية في المسار نفسه، وقياس ما يُسترد من إيراد.",
+      q:{a:"نسبة كبيرة من المتجولين الوافدين لا يرتبطون بشبكتنا أبداً. أين يذهب ذلك الإيراد وهل يمكن استرداده؟",
+         c:"كيف يرصد المشغلون المتجولين الصامتين وينشّطونهم دون إزعاجهم؟",
+         d:"أي المورّدين يقدّم حلول تحقيق الدخل من التجوال والمتجولين الصامتين؟"},
+      v:[
+       {h:"معظم متجوليك لا يتصلون أبداً", d:"يصلون ويبقون خارج الشبكة ولا يظهر الإيراد. ارصدهم عند الوصول بدلاً من ذلك."},
+       {h:"العشر دقائق الأولى تحسم", d:"يختار الزائر شبكته قبل مغادرة المطار. بعدها يكون القرار قد اتُّخذ."},
+       {h:"رسالة الترحيب ليست عرضاً", d:"رسالة الامتثال وسبب الارتباط يمكن أن يسيرا في المسار الآلي نفسه."},
+       {h:"باللغة التي وصلوا بها", d:"رسائل آلية متعددة اللغات تنطلق لحظة دخول الزائر إلى الشبكة."},
+       {h:"من وصل للتو ومن أين", d:"رصد لحظي للمتجولين وتقدير للجمهور داخل أي منطقة محددة."}
+      ]}
+ }},
+
+{
+ id:"m-fraud", aud:"mno",
+ fit:.76, comp:.58, asset:.3, organic:.3, ph:{a:.78,c:.82,d:.6},
+ m:{eu:.8,me:.7,apac:.9,latam:.85,afr:.85,nam:.7},
+ dest:[
+  {u:"https://intersec.com/offerings/network-exposure-through-apis", l:"API exposure"},
+  {u:"https://insights.intersec.com/operator-identity-apis", l:"Identity API brief", b:1},
+  {u:"https://intersec.com/offerings/telecom-network-location", l:"Location platform"},
+  {u:"https://intersec.com/agora-platform", l:"Platform page"},
+  {u:"https://intersec.com/offerings/telecom-marketing-and-innovation", l:"Innovation page"}
+ ],
+ risk:"Financial services is an excluded category on the platform. Write the creative for the operator exposing the signal, never for the bank consuming it, or the ad will be rejected.",
+ evidence:["CAMARA Authentication and Fraud Prevention APIs","Network-verified device location","SIM change signals","Privacy by Design"],
+ why:"Strong demand and a clear commercial story for operators. The catch is that the reader is often on the bank side, which runs straight into the excluded categories. Keeping the copy on the operator side of the transaction is the difference between an approved ad and a rejected one.",
+ setup:["Country targeting on high mobile money and high fraud markets","All platforms","Review the creative against the excluded categories before submitting"],
+ L:{
+  en:{n:"Fraud and identity signals from the network",
+      s:"The subject is an operator being asked by banks and platforms for identity and location signals: what can lawfully be exposed, what consent framework applies, whether the handset is where the customer claims to be, whether the SIM changed recently, and what has to sit behind a standard API before any of it can be sold.",
+      q:{a:"Banks keep asking us for identity and location signals. What can an operator lawfully expose, and what has to sit behind it?",
+         c:"What signals can a mobile network provide to verify a transaction is genuine?",
+         d:"Which platforms help operators launch fraud prevention and identity APIs such as SIM swap and KYC?"},
+      v:[
+       {h:"The network already knows", d:"Device location and SIM change signals you hold today, exposed through CAMARA APIs."},
+       {h:"CAMARA authentication, supported now", d:"Fraud prevention and device information APIs, ready to expose rather than on a roadmap."},
+       {h:"Verified, not self-declared", d:"Network-confirmed device position, independent of whatever the handset chooses to report."},
+       {h:"Expose the signal, not the subscriber", d:"Answer a yes or no question without handing over any personal data at all."},
+       {h:"A revenue line already in your network", d:"What an operator can lawfully expose to enterprises, and the consent framework around it."}
+      ]},
+  fr:{n:"Signaux de fraude et d'identité issus du réseau",
+      s:"Le sujet est un opérateur sollicité par les banques et les plateformes pour des signaux d'identité et de localisation : ce qui peut légalement être exposé, le cadre de consentement applicable, le terminal se trouve-t-il là où le client l'affirme, la SIM a-t-elle changé récemment, et ce qui doit exister derrière une API standard avant de pouvoir vendre quoi que ce soit.",
+      q:{a:"Les banques nous réclament des signaux d'identité et de localisation. Que peut légalement exposer un opérateur, et que faut-il derrière ?",
+         c:"Quels signaux un réseau mobile peut-il fournir pour vérifier qu'une transaction est légitime ?",
+         d:"Quelles plateformes permettent de lancer des API de lutte contre la fraude et d'identité ?"},
+      v:[
+       {h:"Le réseau le sait déjà", d:"Localisation du terminal et signaux de changement de SIM, exposés via des API CAMARA."},
+       {h:"Authentification CAMARA, supportée", d:"API de prévention de la fraude et de device information, disponibles et non prévues."},
+       {h:"Vérifié, pas déclaré", d:"Position du terminal confirmée par le réseau, indépendamment de ce que le terminal rapporte."},
+       {h:"Exposer le signal, pas l'abonné", d:"Répondre par oui ou non sans céder la moindre donnée personnelle."},
+       {h:"Une ligne de revenu déjà dans votre réseau", d:"Ce qu'un opérateur peut légalement exposer aux entreprises, et le cadre de consentement associé."}
+      ]},
+  es:{n:"Señales de fraude e identidad desde la red",
+      s:"El tema es un operador al que bancos y plataformas piden señales de identidad y localización: qué puede exponerse legalmente, qué marco de consentimiento aplica, si el terminal está donde el cliente dice, si la SIM cambió recientemente, y qué debe existir detrás de una API estándar antes de poder vender nada.",
+      q:{a:"Los bancos nos piden señales de identidad y localización. ¿Qué puede exponer legalmente un operador y qué debe haber detrás?",
+         c:"¿Qué señales puede aportar una red móvil para verificar que una transacción es legítima?",
+         d:"¿Qué plataformas permiten lanzar API de prevención del fraude e identidad?"},
+      v:[
+       {h:"La red ya lo sabe", d:"Localización del dispositivo y señales de cambio de SIM, expuestas vía API CAMARA."},
+       {h:"Autenticación CAMARA, ya soportada", d:"API de prevención del fraude e información de dispositivo, disponibles y no en hoja de ruta."},
+       {h:"Verificado, no declarado", d:"Posición del dispositivo confirmada por la red, al margen de lo que el terminal reporte."},
+       {h:"Exponer la señal, no al abonado", d:"Responder sí o no sin ceder ningún dato personal."},
+       {h:"Una línea de ingreso ya en su red", d:"Qué puede exponer legalmente un operador a las empresas, y el marco de consentimiento."}
+      ]},
+  ar:{n:"إشارات الاحتيال والهوية من الشبكة",
+      s:"الموضوع مشغل تطلب منه البنوك والمنصات إشارات هوية وموقع: ما الذي يمكن إتاحته قانونياً، وأي إطار موافقة ينطبق، وهل الجهاز حيث يدّعي العميل، وهل تغيّرت الشريحة مؤخراً، وما الذي يجب أن يقف خلف واجهة قياسية قبل بيع أي شيء.",
+      q:{a:"تطلب منا البنوك إشارات هوية وموقع. ما الذي يمكن للمشغل إتاحته قانونياً، وما الذي يجب أن يقف خلفه؟",
+         c:"ما الإشارات التي يمكن أن توفرها شبكة المحمول للتحقق من صحة معاملة؟",
+         d:"أي المنصات تساعد المشغلين على إطلاق واجهات منع الاحتيال والهوية؟"},
+      v:[
+       {h:"الشبكة تعرف بالفعل", d:"موقع الجهاز وإشارات تغيير الشريحة التي تملكها اليوم، متاحة عبر واجهات CAMARA."},
+       {h:"تحقق CAMARA مدعوم الآن", d:"واجهات منع الاحتيال ومعلومات الجهاز، جاهزة للإتاحة لا مدرجة في خطة."},
+       {h:"مُتحقَّق منه لا مُعلَن", d:"موقع جهاز تؤكده الشبكة، بمعزل عمّا يختار الجهاز الإبلاغ عنه."},
+       {h:"أتِح الإشارة لا المشترك", d:"أجب بنعم أو لا دون تسليم أي بيانات شخصية على الإطلاق."},
+       {h:"مصدر دخل موجود في شبكتك", d:"ما الذي يمكن للمشغل إتاحته قانونياً للمؤسسات، وإطار الموافقة المحيط به."}
+      ]}
+ }},
+
+/* ===================== LAW ENFORCEMENT ===================== */
+{
+ id:"l-meta", aud:"lea",
+ fit:.9, comp:.25, asset:.3, organic:.45, ph:{a:.78,c:.8,d:.72},
+ m:{eu:.8,me:.9,apac:.7,latam:.6,afr:.6,nam:.5},
+ dest:[
+  {u:"https://intersec.com/offerings/homeland-security", l:"Homeland security page"},
+  {u:"https://insights.intersec.com/lawful-metadata-intelligence", l:"Lawful use brief", b:1},
+  {u:"https://intersec.com/agora-platform", l:"Platform page"},
+  {u:"https://intersec.com/offerings/telecom-network-location", l:"Location platform"},
+  {u:"https://intersec.com/cloud-based-applications", l:"Applications"}
+ ],
+ risk:"High likelihood of ad rejection. Surveillance adjacent creative is a reputational risk even if approved. Do not run without legal review of the copy and the landing page.",
+ evidence:["30+ geolocation techniques from 2G to 5G","Historical movement reconstruction","Relationship scoring across clear and encrypted traffic","Stated commitment to data protection and responsible AI"],
+ why:"Strong fit and almost no competition, but the policy exposure outweighs the opportunity on a paid channel. Keep the topic documented so we stop rediscovering it each quarter, and keep it unfunded unless legal clears the creative first. The missing persons framing is the only version likely to clear review.",
+ setup:["Country targeting only where we already hold references","Weight desktop","Do not launch without written legal sign-off"],
+ L:{
+  en:{n:"Metadata intelligence when traffic is encrypted",
+      s:"The subject is an investigative unit whose cases increasingly run through encrypted applications: what the lawfully obtainable network records still establish, how mobility patterns and historical movement are reconstructed, how relationships between parties are surfaced without message content, and the authorisation framework that governs it.",
+      q:{a:"More of our cases now run through encrypted apps. What investigative value is left in the network records we can lawfully obtain?",
+         c:"How do investigators reconstruct movements and relationships from network metadata alone?",
+         d:"Which vendors provide lawful network-based location intelligence for law enforcement?"},
+      v:[
+       {h:"Encrypted does not mean invisible", d:"Mobility, device and relationship analysis from metadata, without touching message content."},
+       {h:"30+ positioning techniques", d:"From 2G to 5G, including reconstruction of a historical movement trail."},
+       {h:"Content is gone, pattern remains", d:"Timing, movement and association survive encryption. That is usually enough to narrow a case."},
+       {h:"Relationships, scored and ranked", d:"AI weighting that puts the significant connections at the top of the file instead of the longest list."},
+       {h:"Lawful by design", d:"Authorisation, data protection and responsible AI built into metadata investigation from the start."}
+      ]},
+  fr:{n:"Renseignement par métadonnées en trafic chiffré",
+      s:"Le sujet est une unité d'enquête dont les affaires passent de plus en plus par des applications chiffrées : ce que les données réseau légalement accessibles permettent encore d'établir, la reconstitution des schémas de mobilité et des déplacements passés, la mise au jour des relations entre individus sans accéder au contenu, et le cadre d'autorisation applicable.",
+      q:{a:"De plus en plus de nos affaires passent par des applications chiffrées. Quelle valeur d'enquête reste-t-il dans les données réseau légalement accessibles ?",
+         c:"Comment reconstituer déplacements et relations à partir des seules métadonnées réseau ?",
+         d:"Quels fournisseurs proposent du renseignement de localisation réseau licite pour les forces de l'ordre ?"},
+      v:[
+       {h:"Chiffré ne veut pas dire invisible", d:"Analyse de mobilité, d'usage et de relations à partir des métadonnées, sans accéder au contenu."},
+       {h:"Plus de 30 techniques de positionnement", d:"De la 2G à la 5G, y compris la reconstitution d'un historique de déplacements."},
+       {h:"Le contenu disparaît, le schéma reste", d:"Horaires, déplacements et associations survivent au chiffrement. Cela suffit souvent à resserrer une affaire."},
+       {h:"Des relations pondérées et classées", d:"Une pondération par IA qui place les liens significatifs en tête, au lieu de la liste la plus longue."},
+       {h:"Licite par conception", d:"Autorisation, protection des données et IA responsable intégrées dès le départ."}
+      ]},
+  es:{n:"Inteligencia de metadatos con tráfico cifrado",
+      s:"El tema es una unidad de investigación cuyos casos pasan cada vez más por aplicaciones cifradas: qué siguen estableciendo los registros de red obtenibles legalmente, cómo se reconstruyen los patrones de movilidad y los desplazamientos pasados, cómo se revelan las relaciones entre personas sin acceder al contenido, y el marco de autorización que lo regula.",
+      q:{a:"Cada vez más casos nuestros pasan por aplicaciones cifradas. ¿Qué valor de investigación queda en los registros de red que podemos obtener legalmente?",
+         c:"¿Cómo se reconstruyen movimientos y relaciones solo a partir de metadatos de red?",
+         d:"¿Qué proveedores ofrecen inteligencia de localización de red lícita para fuerzas de seguridad?"},
+      v:[
+       {h:"Cifrado no significa invisible", d:"Análisis de movilidad, dispositivos y relaciones a partir de metadatos, sin tocar el contenido."},
+       {h:"Más de 30 técnicas de posicionamiento", d:"De 2G a 5G, incluida la reconstrucción de un histórico de desplazamientos."},
+       {h:"El contenido se va, el patrón queda", d:"Horarios, movimientos y asociaciones sobreviven al cifrado. Suele bastar para acotar un caso."},
+       {h:"Relaciones puntuadas y ordenadas", d:"Ponderación con IA que sitúa los vínculos significativos arriba, en lugar de la lista más larga."},
+       {h:"Lícito desde el diseño", d:"Autorización, protección de datos e IA responsable integradas desde el principio."}
+      ]},
+  ar:{n:"تحليل البيانات الوصفية عند تشفير الاتصالات",
+      s:"الموضوع وحدة تحقيق تمر قضاياها بشكل متزايد عبر تطبيقات مشفّرة: ما الذي لا تزال سجلات الشبكة المتاحة قانونياً تثبته، وكيف تُعاد بناء أنماط التنقل والتحركات السابقة، وكيف تظهر العلاقات بين الأطراف دون محتوى الرسائل، والإطار القانوني الذي ينظّم ذلك.",
+      q:{a:"تمر قضايانا بشكل متزايد عبر تطبيقات مشفّرة. ما القيمة التحقيقية المتبقية في سجلات الشبكة المتاحة قانونياً؟",
+         c:"كيف يعيد المحققون بناء التحركات والعلاقات من البيانات الوصفية للشبكة وحدها؟",
+         d:"أي المورّدين يقدّم تحليل مواقع شبكياً مشروعاً لجهات إنفاذ القانون؟"},
+      v:[
+       {h:"التشفير لا يعني الاختفاء", d:"تحليل التنقل والأجهزة والعلاقات من البيانات الوصفية دون المساس بمحتوى الرسائل."},
+       {h:"أكثر من 30 تقنية لتحديد الموقع", d:"من 2G إلى 5G، بما في ذلك إعادة بناء مسار التحركات السابقة."},
+       {h:"المحتوى يختفي والنمط يبقى", d:"التوقيت والتنقل والارتباطات تنجو من التشفير، وغالباً ما يكفي ذلك لتضييق القضية."},
+       {h:"علاقات مرتّبة بالأهمية", d:"ترجيح بالذكاء الاصطناعي يضع الصلات المهمة في المقدمة بدل أطول قائمة."},
+       {h:"مشروع بحكم التصميم", d:"التفويض القانوني وحماية البيانات والذكاء الاصطناعي المسؤول مدمجة منذ البداية."}
+      ]}
+ }}
+];
+
+/* ------------------------------------------------------------------ */
+var state = {
+  phase:"a", lang:"en", budget:450,
+  auds:{gov:true,reg:true,mno:true,lea:true},
+  regions:{eu:true,me:true,apac:true,latam:true,afr:true,nam:false},
+  open:{}
+};
+
+var $ = function(id){ return document.getElementById(id); };
+var esc = function(s){ return String(s).replace(/[&<>"]/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+var num = function(n){ return new Intl.NumberFormat("en-GB",{maximumFractionDigits:0}).format(Math.round(n)); };
+
+function pickedRegions(){ return Object.keys(state.regions).filter(function(k){ return state.regions[k]; }); }
+
+function scoreOf(t){
+  var regs = pickedRegions();
+  var mult = regs.length ? Math.max.apply(null, regs.map(function(k){ return t.m[k] || 0; })) : 0;
+  var ph = t.ph[state.phase];
+  var organicPenalty = state.phase === "d" ? t.organic * 0.42 : t.organic * 0.08;
+  var raw = 0.40*ph + 0.28*t.fit + 0.14*t.asset - 0.20*t.comp - organicPenalty;
+  return Math.max(0, Math.min(1, raw / 0.82)) * mult;
+}
+
+var PHASE_CVR = {a:0.006, c:0.018, d:0.035};
+function cpcOf(t){ return Math.round((1.6 + 2.8 * t.comp) * 10) / 10; }
+function cvrOf(t){ return PHASE_CVR[state.phase] * (0.55 + 0.65 * t.asset); }
+
+function strengthBars(v){
+  var n = v >= .62 ? 3 : v >= .38 ? 2 : 1, h = "";
+  for (var i=1;i<=3;i++) h += '<i class="' + (i<=n ? "on" : "") + '"></i>';
+  return '<span class="strength" title="Relative strength">' + h + "</span>";
+}
+
+function countryLine(){
+  var regs = pickedRegions();
+  if (!regs.length) return "No region selected.";
+  var all = [];
+  regs.forEach(function(r){ all = all.concat(REGIONS[r].countries); });
+  var show = all.slice(0, 10);
+  return show.join(" · ") + (all.length > show.length ? "  +" + (all.length - show.length) + " more" : "");
+}
+
+function render(){
+  $("budgetval").textContent = num(state.budget) + " EUR";
+  $("dailyval").textContent = num(state.budget / DAYS) + " EUR/day";
+  $("phasenote").innerHTML = PHASE_NOTE[state.phase];
+
+  var sel = T.filter(function(t){ return state.auds[t.aud]; })
+             .map(function(t){ var c = Object.create(t); c.sc = scoreOf(t); return c; })
+             .filter(function(t){ return t.sc > 0.02; })
+             .sort(function(a,b){ return b.sc - a.sc; });
+
+  $("count").textContent = sel.length + " of " + T.length + " topics";
+
+  if (!sel.length){
+    $("results").innerHTML = '<div class="empty">Select at least one buyer and one region.</div>';
+    return;
+  }
+
+  var lang = state.lang, rtl = !!RTL[lang], dirAttr = rtl ? ' dir="rtl"' : "";
+  var phaseName = PHASES.filter(function(p){ return p.id === state.phase; })[0].name;
+
+  $("results").innerHTML = sel.map(function(t, i){
+    var L = t.L[lang], open = !!state.open[t.id], lead = i === 0;
+    var hint = FRAME[lang][state.phase] + " " + L.s;
+
+    var cpc = cpcOf(t), clicks = state.budget / cpc, conv = clicks * cvrOf(t);
+    var cpa = conv >= 0.2 ? num(state.budget / conv) + " EUR" : "n/a";
+    var convText = conv >= 10 ? num(conv) : conv >= 1 ? conv.toFixed(1) : "under 1";
+
+    var tags = '<span class="tag">' + esc(AUDS[t.aud]) + "</span>" +
+      (lead ? '<span class="tag lead">Start here</span>' : "") +
+      (t.risk ? '<span class="tag risk">Policy check</span>' : "") +
+      (state.phase === "d" && t.organic >= .5 ? '<span class="tag organic">Already surfacing</span>' : "");
+
+    var head =
+      '<button class="cardhead" type="button" data-id="' + t.id + '" aria-expanded="' + open + '">' +
+        '<span class="rank">' + String(i+1).padStart(2,"0") + "</span>" +
+        '<span class="ttl"><span class="name">' + esc(L.n) + '</span><span class="meta">' + tags + "</span></span>" +
+        '<span class="scorebox">' + strengthBars(t.sc) + '<span class="chev">' + (open ? "&minus;" : "+") + "</span></span>" +
+      "</button>";
+
+    if (!open) return '<div class="card' + (lead?" lead":"") + '">' + head + "</div>";
+
+    var ladder = PHASES.map(function(p){
+      return '<div class="lrow' + (p.id === state.phase ? " active" : "") + '"><span>' + p.name + "</span><span" + dirAttr + ">" + esc(L.q[p.id]) + "</span></div>";
+    }).join("");
+
+    var ads = L.v.map(function(v, k){
+      var dst = t.dest[k] || t.dest[0];
+      return '<div class="ad"' + dirAttr + '>' +
+        '<div class="vnum">' + (k+1) + " · " + esc(ANGLES[k]) + "</div>" +
+        '<div class="brandline">Sponsored · Intersec</div>' +
+        '<div class="h">' + esc(v.h) + "</div>" +
+        '<div class="d">' + esc(v.d) + "</div>" +
+        '<div class="u"><span class="dlabel">' + esc(dst.l) +
+          (dst.b ? '<span class="build">to create</span>' : "") + "</span><br>" + esc(dst.u) + "</div>" +
+      "</div>";
+    }).join("");
+
+    var body =
+      '<div class="body">' +
+        '<div><h4 class="blockhead">The question we buy at the ' + phaseName.toLowerCase() + ' phase</h4>' +
+          '<div class="qline"' + dirAttr + '><p>' + esc(L.q[state.phase]) + "</p></div>" +
+          '<div class="ladder">' + ladder + "</div></div>" +
+
+        '<div class="hintbox">' +
+          '<button class="copy" type="button" data-copy="' + t.id + '">Copy</button>' +
+          '<h4 class="blockhead">Context hint · ' + esc(LANGS[lang]) + "</h4>" +
+          '<p id="hint-' + t.id + '"' + dirAttr + ">" + esc(hint) + "</p>" +
+        "</div>" +
+
+        '<div><h4 class="blockhead">Five ad variants · ' + esc(LANGS[lang]) + '</h4><div class="ads">' + ads + "</div></div>" +
+
+        '<div><h4 class="blockhead">Estimate per ad at ' + num(state.budget) + ' EUR a month</h4>' +
+        '<div class="est">' +
+          '<div><div class="n">' + cpc.toFixed(2) + '</div><div class="l">EUR per click</div></div>' +
+          '<div><div class="n">' + num(clicks) + '</div><div class="l">clicks a month</div></div>' +
+          '<div><div class="n">' + convText + '</div><div class="l">conversions a month</div></div>' +
+          '<div><div class="n">' + cpa + '</div><div class="l">per conversion</div></div>' +
+        "</div></div>" +
+
+        '<div class="bk"><h4>Campaign setup</h4><ul>' +
+          t.setup.map(function(x){ return "<li>" + esc(x) + "</li>"; }).join("") +
+        "</ul></div>" +
+
+        '<div class="bk"><h4>Country targeting</h4><p class="geo">' + esc(countryLine()) + "</p></div>" +
+        '<div class="bk"><h4>Evidence we can point to</h4><div class="evid">' +
+          t.evidence.map(function(x){ return "<span>" + esc(x) + "</span>"; }).join("") + "</div></div>" +
+        '<div class="bk"><h4>Why run this</h4><p>' + esc(t.why) + "</p></div>" +
+        (t.risk ? '<div class="note">' + esc(t.risk) + "</div>" : "") +
+      "</div>";
+
+    return '<div class="card' + (lead?" lead":"") + '">' + head + body + "</div>";
+  }).join("");
+}
+
+/* ---- controls ---- */
+$("phases").innerHTML = PHASES.map(function(p){
+  return '<button class="segbtn" type="button" data-p="' + p.id + '" aria-pressed="' + (p.id===state.phase) + '">' +
+    p.name + "<small>" + p.sub + "</small></button>";
+}).join("");
+$("phases").addEventListener("click", function(e){
+  var b = e.target.closest(".segbtn"); if (!b) return;
+  state.phase = b.getAttribute("data-p");
+  Array.prototype.forEach.call(this.querySelectorAll(".segbtn"), function(x){
+    x.setAttribute("aria-pressed", String(x.getAttribute("data-p") === state.phase)); });
+  render();
+});
+
+function chipGroup(el, map, store, single){
+  el.innerHTML = Object.keys(map).map(function(k){
+    var on = single ? (store === k) : !!store[k];
+    return '<button class="chip" type="button" data-k="' + k + '" aria-pressed="' + on + '">' + esc(map[k].name || map[k]) + "</button>";
+  }).join("");
+}
+chipGroup($("auds"), AUDS, state.auds);
+chipGroup($("langs"), LANGS, state.lang, true);
+chipGroup($("regions"), REGIONS, state.regions);
+
+$("auds").addEventListener("click", function(e){
+  var b = e.target.closest(".chip"); if (!b) return;
+  var k = b.getAttribute("data-k"); state.auds[k] = !state.auds[k];
+  b.setAttribute("aria-pressed", String(state.auds[k])); render();
+});
+$("regions").addEventListener("click", function(e){
+  var b = e.target.closest(".chip"); if (!b) return;
+  var k = b.getAttribute("data-k"); state.regions[k] = !state.regions[k];
+  b.setAttribute("aria-pressed", String(state.regions[k])); render();
+});
+$("langs").addEventListener("click", function(e){
+  var b = e.target.closest(".chip"); if (!b) return;
+  state.lang = b.getAttribute("data-k");
+  Array.prototype.forEach.call(this.querySelectorAll(".chip"), function(x){
+    x.setAttribute("aria-pressed", String(x.getAttribute("data-k") === state.lang)); });
+  render();
+});
+$("budget").addEventListener("input", function(e){ state.budget = +e.target.value; render(); });
+
+$("reset").addEventListener("click", function(){
+  state.phase = "a"; state.lang = "en"; state.budget = 450; state.open = {};
+  Object.keys(state.auds).forEach(function(k){ state.auds[k] = true; });
+  Object.keys(state.regions).forEach(function(k){ state.regions[k] = (k !== "nam"); });
+  $("budget").value = 450;
+  Array.prototype.forEach.call($("phases").querySelectorAll(".segbtn"), function(x){
+    x.setAttribute("aria-pressed", String(x.getAttribute("data-p") === "a")); });
+  chipGroup($("auds"), AUDS, state.auds);
+  chipGroup($("langs"), LANGS, state.lang, true);
+  chipGroup($("regions"), REGIONS, state.regions);
+  render();
+});
+
+$("results").addEventListener("click", function(e){
+  var cp = e.target.closest(".copy");
+  if (cp){
+    e.stopPropagation();
+    var node = document.getElementById("hint-" + cp.getAttribute("data-copy"));
+    var text = node ? node.textContent : "";
+    var done = function(){ cp.textContent = "Copied"; setTimeout(function(){ cp.textContent = "Copy"; }, 1400); };
+    var fail = function(){ selectText(node); cp.textContent = "Select"; };
+    try { navigator.clipboard.writeText(text).then(done, fail); } catch (err) { fail(); }
+    return;
+  }
+  var h = e.target.closest(".cardhead"); if (!h) return;
+  var id = h.getAttribute("data-id");
+  state.open[id] = !state.open[id];
+  render();
+});
+
+function selectText(node){
+  if (!node) return;
+  try { var r = document.createRange(); r.selectNodeContents(node);
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (err) {}
+}
+
+state.open["g-tourist"] = true;
+render();
+})();
+</script>
+</body>
+</html>
